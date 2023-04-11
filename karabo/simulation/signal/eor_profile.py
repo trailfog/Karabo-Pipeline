@@ -1,14 +1,13 @@
 """EoR profile simulation."""
 
-from typing import Annotated, Literal, Optional
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy.typing as npt
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
 
-EoRProfileT = Annotated[npt.NDArray[np.float_], Literal["N", 2]]
+from karabo.simulation.signal.typing import EoRProfileT
 
 
 class EoRProfile:
