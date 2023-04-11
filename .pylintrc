@@ -1,0 +1,11 @@
+[MASTER]
+
+[MESSAGES CONTROL]
+disable=import-error
+
+[FORMAT]
+max-line-length=150
+
+[BASIC]
+good-names=i,df,dx,dy,x,y,ax,z,dr
+variable-rgx=[a-z_][a-z0-9_]{0,30}$
