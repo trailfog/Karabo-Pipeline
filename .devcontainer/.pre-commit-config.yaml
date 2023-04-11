@@ -1,0 +1,69 @@
+exclude: ^(karabo/data/.*|.vscode/.*|poetry\.lock|devcontainer\.json)$
+
+repos:
+  - repo: https://github.com/commitizen-tools/commitizen
+    # Please run `pre-commit install --hook-type commit-msg` to check commit messages
+    rev: v2.42.1
+    hooks:
+      - id: commitizen
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: detect-private-key
+      - id: check-case-conflict
+      - id: check-ast
+      - id: check-added-large-files
+
+  - repo: https://github.com/codespell-project/codespell.git
+    rev: v2.2.4
+    hooks:
+      - id: codespell
+        name: codespell
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.3.1
+    hooks:
+      - id: pyupgrade
+        args: [--py39-plus]
+
+  - repo: https://github.com/hadialqattan/pycln
+    rev: v2.1.3
+    hooks:
+      - id: pycln
+        name: pycln (python)
+
+  - repo: https://github.com/psf/black
+    rev: 23.1.0
+    hooks:
+      - id: black
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: isort (python)
+
+  - repo: https://github.com/PyCQA/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        name: pydocstyle
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.1.1
+    hooks:
+      - id: mypy
+        name: mypy
+        additional_dependencies: []
+
+  - repo: https://github.com/pycqa/pylint
+    rev: v2.17.1
+    hooks:
+      - id: pylint
+        types: [python]
