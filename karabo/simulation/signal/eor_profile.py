@@ -50,7 +50,7 @@ class EoRProfile:
         cls,
         x_hi: float = 0.1,
         dv_r_over_dr: float = 0,
-        f_range: tuple[int, int] = (1e6, 200e6),
+        f_range: tuple[float, float] = (1e6, 200e6),
         plot_points: Union[float, int] = 1e6,
     ) -> EoRProfileT:
         """
