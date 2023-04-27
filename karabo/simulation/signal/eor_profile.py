@@ -49,26 +49,25 @@ class EoRProfile:
     @classmethod
     def simulate(
         cls,
-        x_hi: float = 0.1,
+        x_hi: Annotated[npt.NDArray[np.float_], Literal["N"]],
         dv_r_over_dr: float = 0,
         f_range: tuple[float, float] = (1e6, 200e6),
-        plot_points: Union[float, int] = 1e6,
     ) -> EoRProfileT:
         """
         Calculate the approximate evolution of fluctuations in the 21cm brightness.
+
+        The number of points is determined by the resolution of the x_hi array.
 
         Implemented per https://arxiv.org/pdf/1602.02351.pdf, equation (1)
 
         Parameters
         ----------
-        x_hi : float, optional
-            Neutral hydrogen fraction, by default 0.1
+        x_hi : Annotated[npt.NDArray[np.float_], Literal["N"]]
+            Neutral hydrogen fraction.
         dv_r_over_dr : float, optional
             ???. By default 0
         f_range : tuple[float, float], optional
             Frequency range to plot in [Hz]. by default (2, 200e6)
-        plot_points : float | int, optional
-            How many points to be plotted, by default 1e6
 
         Returns
         -------
@@ -77,7 +76,7 @@ class EoRProfile:
             the frequency in the first column and the corresponding EoR profile in the
             second.
         """
-        freq_range = np.linspace(*f_range, num=int(plot_points))
+        freq_range = np.linspace(*f_range, num=len(x_hi))
         z_range = (EoRProfile.frequency_21cm / freq_range) - 1
 
         eor_profile = (
@@ -129,6 +128,12 @@ class EoRProfile:
 
 
 if __name__ == "__main__":
-    eor = EoRProfile.simulate()
+    rnd = np.random.rand(200)
+    sum_rnd = np.cumsum(rnd)
+    sum_rnd /= sum_rnd[-1]
+
+    # plt.plot(range(len(sum_rnd)), sum_rnd)
+
+    eor = EoRProfile.simulate(x_hi=sum_rnd)
     EoRProfile.plot(eor)
     plt.show()
