@@ -103,3 +103,40 @@ class SignalPlotting:
         ax.set_ylabel(r"P(k) k$^{3}$/$(2\pi^2)$")
 
         return fig
+
+    # def segmentploting(self, seg :Segmentation, mask_xHI :NDArray[bool_], xHII_stitch):
+    def segmentploting(self, boxsize, xHI_seg, xHI_seg_err, phicoef_seg, mask_xHI2):
+
+        # plots
+        # 46
+        fig, axs = plt.subplots(figsize=(12, 6), ncols=2, sharey=True, sharex=True)
+        (ax1, ax2) = axs
+
+        ax1.set_title("SegU-Net ($r_{\phi}=%.3f$)" % phicoef_seg)
+        ax1.imshow(
+            xHI_seg[0], origin="lower", cmap="jet", extent=[0, boxsize, 0, boxsize]
+        )
+        ax1.contour(mask_xHI2[0], colors="lime", extent=[0, boxsize, 0, boxsize])
+        ax1.set_xlabel("x [Mpc]")
+
+        ax2.set_title("SegUNet Pixel-Error")
+        im = ax2.imshow(
+            xHI_seg_err[0], origin="lower", cmap="jet", extent=[0, boxsize, 0, boxsize]
+        )
+        fig.colorbar(
+            im,
+            label=r"$\sigma_{std}$",
+            ax=ax2,
+            pad=0.02,
+            cax=fig.add_axes([0.905, 0.25, 0.02, 0.51]),
+        )
+        ax2.set_xlabel("x [Mpc]")
+
+        plt.subplots_adjust(hspace=0.1, wspace=0.01)
+        for ax in axs.flat:
+            ax.label_outer()
+        
+        plt.savefig("./seg_TESTplot.png", dpi=200)
+
+        print("✏️ "*5 + "done with segmentploting 📊 " + "✏️ "*10)
+
