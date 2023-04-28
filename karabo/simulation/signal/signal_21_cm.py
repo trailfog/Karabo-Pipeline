@@ -8,22 +8,22 @@ import tools21cm as t2c
 
 from karabo.data.external_data import DownloadObject
 from karabo.error import KaraboError
-from karabo.simulation.signal.base_signal import BaseSignal2D
-from karabo.simulation.signal.plotting import SignalPlotting
+from karabo.simulation.signal.base_signal import BaseSignal
 from karabo.simulation.signal.typing import Image3D, XFracDensFilePair
 
 
-class Signal21cm(BaseSignal2D):
+class Signal21cm(BaseSignal[Image3D]):
     """
     21cm Signal simulation wrapper.
 
     Examples
     --------
     >>> z1 = Signal21cm.get_xfrac_dens_file(z=6.000, box_dims=244 / 0.7)
-    >>> z2 = Signal21cm.get_xfrac_dens_file(z=6.028, box_dims=244 / 0.7)
-    >>> z3 = Signal21cm.get_xfrac_dens_file(z=7.059, box_dims=244 / 0.7)
-    >>> sig = Signal21cm([z1, z2, z3])
+    >>> z2 = Signal21cm.get_xfrac_dens_file(z=7.059, box_dims=244 / 0.7)
+    >>> sig = Signal21cm([z1, z2])
     >>> signal_images = sig.simulate()
+    >>> fig = SignalPlotting.brightness_temperature(signal_images[0])
+    >>> fig.savefig("brightness_temperature.png")
     """
 
     def __init__(self, files: list[XFracDensFilePair]) -> None:
@@ -43,9 +43,9 @@ class Signal21cm(BaseSignal2D):
 
         Returns
         -------
-        list[Image2D]
-            A list of images, based on the `self.files` list of provided xfrac and dens
-            files.
+        list[Image3D]
+            A list of 3D image cubes, based on the `self.files` list of provided xfrac
+            and dens files.
 
         Raises
         ------
@@ -198,11 +198,3 @@ class Signal21cm(BaseSignal2D):
         return XFracDensFilePair(
             xfrac_path=Path(xfrac_path), dens_path=Path(dens_path), box_dims=box_dims
         )
-
-
-z1 = Signal21cm.get_xfrac_dens_file(z=6.000, box_dims=244 / 0.7)
-z3 = Signal21cm.get_xfrac_dens_file(z=7.059, box_dims=244 / 0.7)
-sig = Signal21cm([z1, z3])
-signal_images = sig.simulate()
-fig = SignalPlotting.brightness_temperature(signal_images[0])
-fig.savefig("a.png")

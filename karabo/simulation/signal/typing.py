@@ -88,8 +88,8 @@ class XFracDensFilePair(NamedTuple):
 
 
 @dataclass(frozen=True)
-class Image2D:
-    """A 2D image."""
+class BaseImage:
+    """A general image, meant to be subclassed."""
 
     data: Annotated[npt.NDArray[np.float_], Literal["X", "Y"]]
     """Image data in a 2D array."""
@@ -105,7 +105,12 @@ class Image2D:
 
 
 @dataclass(frozen=True)
-class Image3D(Image2D):
+class Image2D(BaseImage):
+    """A 2D image."""
+
+
+@dataclass(frozen=True)
+class Image3D(BaseImage):
     """A 3D cube of images along the z-axis."""
 
     data: Annotated[npt.NDArray[np.float_], Literal["Z", "X", "Y"]]
