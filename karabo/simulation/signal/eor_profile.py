@@ -1,12 +1,14 @@
 """EoR profile simulation."""
 
-from typing import Annotated, Literal, Optional, Union
+from typing import Annotated, Literal, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
+
+from karabo.error import KaraboError
 
 EoRProfileT = Annotated[npt.NDArray[np.float_], Literal["N", 2]]
 
@@ -93,12 +95,20 @@ class EoRProfile:
         return np.stack((freq_range, eor_profile), axis=-1)
 
     @classmethod
-    def plot(cls, profile: Optional[EoRProfileT] = None) -> Figure:
+    def plot(
+        cls,
+        x_hi: Optional[Annotated[npt.NDArray[np.float_], Literal["N"]]] = None,
+        profile: Optional[EoRProfileT] = None,
+    ) -> Figure:
         """
         Plot the fluctuation profile of the 21cm signal.
 
+        Either the x_hi parmater needs to be given or the calculated profile.
+
         Parameters
         ----------
+        x_hi : Optional[Annotated[npt.NDArray[np.float_], Literal["N"]]], optional
+            Neutral hydrogen fraction, by default None.
         profile : Optional[EoRProfileT], optional
             An optional profile to be plotted. If not given, a default EoR profile will
             be plotted. By default None.
@@ -109,7 +119,12 @@ class EoRProfile:
             The plotted figure of the 21cm signal.
         """
         if profile is None:
-            profile = cls.simulate()
+            if x_hi is None:
+                raise KaraboError(
+                    "Either the profile or the x_hi parameters need to be given."
+                )
+
+            profile = cls.simulate(x_hi)
 
         redshift = profile[:, 0]
         delta_tb = profile[:, 1]
