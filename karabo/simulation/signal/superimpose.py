@@ -86,8 +86,8 @@ class Superimpose:
                 output += signal.data
             return Image2D(
                 data=output,
-                x=signals[0].x,
-                y=signals[0].y,
+                x_label=signals[0].x_label,
+                y_label=signals[0].y_label,
                 redshift=signals[0].redshift,
             )
 
@@ -105,7 +105,7 @@ class Superimpose:
         return Image2DOriented(
             sky_model=first_sig.sky_model,
             data=output,
-            x=first_sig.x,
-            y=first_sig.y,
+            x_label=first_sig.x_label,
+            y_label=first_sig.y_label,
             redshift=first_sig.redshift,
         )
