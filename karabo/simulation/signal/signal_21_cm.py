@@ -1,7 +1,7 @@
 """21cm Signal simulation."""
 
 from pathlib import Path
-from typing import Final
+from typing import Callable, Final
 
 import numpy as np
 import tools21cm as t2c
@@ -78,9 +78,30 @@ class Signal21cm(BaseSignal2D):
 
         return images
 
+    @staticmethod
+    def default_r_hii(redshift: float) -> float:
+        """
+        Default radius function for the lightcone HII region.
+
+        Parameters
+        ----------
+        redshift : float
+            Redshift, to determine the radius for.
+
+        Returns
+        -------
+        float
+            Lightcone radius.
+        """
+        return 30 * np.exp(-(redshift - 7.0) / 3)
+
     @classmethod
     def randomized_lightcones(
-        cls, n_cells: int, z: float, bubble_count: int = 3
+        cls,
+        n_cells: int,
+        z: float,
+        r_hii: Callable[[float], float] = default_r_hii,
+        bubble_count: int = 3,
     ) -> Image2D:
         """
         Generate an image with randomized lighcones.
@@ -91,6 +112,8 @@ class Signal21cm(BaseSignal2D):
             The count of cells to produce.
         z : float
             The redshift value for this image.
+        r_hii : Callable[[float], float], optional
+            Radius function of the HII region.
         bubble_count : int, optional
             How many bubbles to produce, by default 3
 
@@ -104,7 +127,7 @@ class Signal21cm(BaseSignal2D):
             np.arange(n_cells), np.arange(n_cells), np.arange(n_cells), sparse=True
         )
 
-        r = 30 * np.exp(-(z - 7.0) / 3)
+        r = r_hii(z)
         r2 = (xx - n_cells / 2) ** 2 + (yy - n_cells / 2) ** 2 + (zz - n_cells / 2) ** 2
         xx_0 = n_cells // 2
         yy_0 = n_cells // 2
