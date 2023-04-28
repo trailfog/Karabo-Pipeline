@@ -1,5 +1,6 @@
 """Signal plotting helpers."""
 from typing import Union
+
 import matplotlib.pyplot as plt
 import numpy as np
 import tools21cm as t2c
