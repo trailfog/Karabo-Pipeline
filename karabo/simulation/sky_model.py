@@ -10,7 +10,8 @@ from warnings import warn
 import matplotlib.pyplot as plt
 import numpy
 import numpy as np
-import oskar
+
+# import oskar
 import pandas as pd
 from astropy import units as u
 from astropy.table import Table
