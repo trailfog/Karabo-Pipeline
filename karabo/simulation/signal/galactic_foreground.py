@@ -1,27 +1,48 @@
 """Galactic Foreground signal catalogue wrapper."""
 
-from collections.abc import Iterator
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Final, Literal, Optional
 
 import numpy as np
+import numpy.typing as npt
+import pandas as pd
 from astropy import units
 from astropy.coordinates import Angle, SkyCoord
 from astropy.table import Table
-from scipy.interpolate import griddata
 
 from karabo.data.external_data import GLEAMSurveyDownloadObject
-from karabo.simulation.signal.base_signal import BaseSignal2D
-from karabo.simulation.signal.typing import Image2DOriented
+from karabo.error import KaraboError
+from karabo.simulation.signal.base_signal import BaseSignal
+from karabo.simulation.signal.typing import Image2D
 
 
-class SignalGalacticForeground(BaseSignal2D):
-    """Galactic Foreground signal catalogue wrapper."""
+# pylint: disable=too-few-public-methods
+class SignalGalacticForeground(BaseSignal[Image2D]):
+    """
+    Galactic Foreground signal catalogue wrapper.
 
+    Examples
+    --------
+    >>> cent = SkyCoord(ra=10 * units.degree, dec=20 * units.degree, frame="icrs")
+    >>> gf = SignalGalacticForeground(
+    ...    cent,
+    ...    redshifts=[7.6],
+    ...    grid_size=(30, 30),
+    ...    fov=Angle([20, 20], unit=units.degree),
+    ... )
+    >>> imgs = gf.simulate()
+    """
+
+    RA_COLUMN: Final[str] = "RAJ2000"
+    DEC_COLUMN: Final[str] = "DEJ2000"
+
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         centre: SkyCoord,
         fov: Angle,
+        redshifts: list[float],
+        grid_size: tuple[Annotated[int, Literal["X"]], Annotated[int, Literal["Y"]]],
         gleam_file_path: Optional[Path] = None,
     ) -> None:
         """
@@ -32,8 +53,12 @@ class SignalGalacticForeground(BaseSignal2D):
         centre : Angle
             Center point. lon = right ascention, lat = declination
         fov : Angle
-            Field of view for the right ascention in degrees. Must be between 0 < fov <= 180.
-            lon = right ascention fov, lat = declination fov
+            Field of view for the right ascention in degrees. Must be between 0 < fov <=
+            180. lon = right ascention fov, lat = declination fov
+        redshifts : list[float]
+            At what redshifts to observe the catalogue at.
+        grid_size : tuple[Annotated[int, Literal["X"]], Annotated[int, Literal["Y"]]]
+            Size of the simulated output image (X, Y).
         gleam_file_path : Optional[Path], optional
             Path to the gleam catalogue path to use, by default None. If None, the
             default GELAM Catalogue from Karabo is used.
@@ -43,80 +68,143 @@ class SignalGalacticForeground(BaseSignal2D):
 
         self.gleam_file_path = gleam_file_path
         self.centre = centre
+        self.redshifts = redshifts
+        self.grid_size = grid_size
 
         fov.wrap_angle = 180 * units.deg
         self.fov = fov
 
         self.gleam_catalogue = Table.read(gleam_file_path)
 
-    def simulate(self) -> list[Image2DOriented]:
+    def simulate(self) -> list[Image2D]:
         """Simulate a signal to get a 2D image output."""
-        # TODO: Decide on which column to use!
-        pos_df = self.gleam_catalogue[self.gleam_catalogue["Fint076"] >= 0].to_pandas()
+        images: list[Image2D] = []
 
-        fov_ra: float = (self.fov.degree[0] / 2) * units.deg
-        fov_dec: float = (self.fov.degree[1] / 2) * units.deg
+        for redshift in self.redshifts:
+            flux_column = SignalGalacticForeground._flux_column(redshift)
 
-        bottom_left = Angle(
-            [self.centre.ra - fov_ra, self.centre.dec - fov_dec], unit=units.deg
-        )
-        top_right = Angle(
-            [self.centre.ra + fov_ra, self.centre.dec + fov_dec], unit=units.deg
-        )
+            if flux_column not in self.gleam_catalogue.columns:
+                raise KaraboError(
+                    "The GLEAM catalogue does not contain the redshift value of"
+                    + str(redshift)
+                )
 
-        ra_filter = (pos_df["RAJ2000"] >= bottom_left.degree[0]) & (
-            pos_df["RAJ2000"] <= top_right.degree[0]
-        )
-        dec_filter = (pos_df["DEJ2000"] >= bottom_left.degree[1]) & (
-            pos_df["DEJ2000"] <= top_right.degree[1]
-        )
-        pos_df = pos_df[ra_filter & dec_filter]
+            pos_df = self.gleam_catalogue[
+                self.gleam_catalogue[flux_column] >= 0
+            ].to_pandas()
 
-        ra = pos_df["RAJ2000"]
-        dec = pos_df["DEJ2000"]
-        flux = pos_df["Fint076"]  # TODO: Decide on which column to use!
+            fov_ra: float = (self.fov.degree[0] / 2) * units.deg
+            fov_dec: float = (self.fov.degree[1] / 2) * units.deg
 
-        ra_grid, dec_grid = np.meshgrid(ra, dec)
-        grid_intensity = griddata(
-            (ra, dec), flux, (ra_grid, dec_grid), method="nearest"
-        )
+            bottom_left = Angle(
+                [self.centre.ra - fov_ra, self.centre.dec - fov_dec], unit=units.deg
+            )
+            top_right = Angle(
+                [self.centre.ra + fov_ra, self.centre.dec + fov_dec], unit=units.deg
+            )
 
-        # TODO: Remove
-        # from astropy.wcs import WCS
-        # from astropy.io import fits
+            ra_filter = (
+                pos_df[SignalGalacticForeground.RA_COLUMN] >= bottom_left.degree[0]
+            ) & (pos_df[SignalGalacticForeground.RA_COLUMN] < top_right.degree[0])
+            dec_filter = (
+                pos_df[SignalGalacticForeground.DEC_COLUMN] >= bottom_left.degree[1]
+            ) & (pos_df[SignalGalacticForeground.DEC_COLUMN] < top_right.degree[1])
+            pos_df = pos_df[ra_filter & dec_filter]
+            grid_intensity = self._map_datapoints(
+                pos_df,
+                flux_column=flux_column,
+                grid_size=self.grid_size,
+            )
 
-        # hdu = fits.open(self.gleam_file_path)[0]
-        # wcs = WCS(hdu.header)
+            x_label = np.linspace(
+                bottom_left.degree[0], top_right.degree[0], num=self.grid_size[0]
+            )
+            y_label = np.linspace(
+                bottom_left.degree[1], top_right.degree[1], num=self.grid_size[1]
+            )
 
-        # ax = plt.axes(projection=wcs)
-        import seaborn as sns
+            images.append(
+                Image2D(
+                    data=grid_intensity,
+                    x_label=x_label,
+                    y_label=y_label,
+                    redshift=redshift,
+                )
+            )
 
-        fig, axs = plt.subplots(1, 2)
-        img = axs[0].imshow(
-            grid_intensity,
-            extent=[
-                bottom_left.degree[0],
-                top_right.degree[0],
-                bottom_left.degree[1],
-                top_right.degree[1],
-            ],
-            aspect="equal",
-            origin="lower",
-            cmap="viridis",
-        )
-        plt.colorbar(img)
+        return images
 
-        sns.scatterplot(x=ra, y=dec, hue=flux, ax=axs[1], alpha=0.6)
+    @classmethod
+    def _flux_column(cls, redshift: float) -> str:
+        """
+        Get the flux column name from the redshift value.
 
-        plt.show()
+        Parameters
+        ----------
+        redshift : float
+            The redshift value.
 
-        return [grid_intensity]
+        Returns
+        -------
+        str
+            Flux column name.
+        """
+        return f"Fint{(redshift*10):0>3.0f}"
 
+    # pylint: disable=too-many-locals
+    @classmethod
+    def _map_datapoints(
+        cls,
+        data: pd.DataFrame,
+        flux_column: str,
+        grid_size: tuple[Annotated[int, Literal["X"]], Annotated[int, Literal["Y"]]],
+    ) -> Annotated[npt.NDArray[np.float_], Literal["X", "Y"]]:
+        """
+        Map the given datapoints with a destination to source mapping.
 
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
+        For each pixel in the destination grid, the equivalent degree range in the
+        source will be summed together and set in the destination grid.
 
-    centre = SkyCoord(ra=10.625 * units.degree, dec=15 * units.degree, frame="icrs")
+        Parameters
+        ----------
+        data : pd.DataFrame,
+            The data that is to be plotted onto the grid.
+        flux_column : str
+            Name of the flux column to use for the intensities.
+        grid_size : tuple[Annotated[int, Literal["X"]], Annotated[int, Literal["Y"]]]
+            Size of the output grid.
 
-    gf = SignalGalacticForeground(centre, fov=Angle([20, 10], unit=units.degree))
-    images = gf.simulate()
+        Returns
+        -------
+        Annotated[npt.NDArray[np.float_], Literal["X", "Y"]]
+            A 2D numpy array representing an image with the dimensions of the grid_size
+            parameter.
+        """
+        grid = np.zeros(grid_size)
+
+        x_min, x_max = data[SignalGalacticForeground.RA_COLUMN].agg(["min", "max"])
+        y_min, y_max = data[SignalGalacticForeground.DEC_COLUMN].agg(["min", "max"])
+
+        x_delta = (x_max - x_min) / grid_size[0]
+        y_delta = (y_max - y_min) / grid_size[1]
+
+        for x in range(grid_size[0]):
+            x_beg = x_min + x * x_delta
+            x_end = x_beg + x_delta
+
+            ra_filter = (data[SignalGalacticForeground.RA_COLUMN] >= x_beg) & (
+                data[SignalGalacticForeground.RA_COLUMN] < x_end
+            )
+
+            for y in range(grid_size[1]):
+                y_beg = y_min + y * y_delta
+                y_end = y_beg + y_delta
+
+                dec_filter = (data[SignalGalacticForeground.DEC_COLUMN] >= y_beg) & (
+                    data[SignalGalacticForeground.DEC_COLUMN] < y_end
+                )
+
+                pixel_value = data.loc[ra_filter & dec_filter, flux_column].sum()
+                grid[x, y] = pixel_value
+
+        return np.flip(grid, (0, 1))
