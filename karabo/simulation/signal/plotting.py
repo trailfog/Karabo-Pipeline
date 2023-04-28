@@ -1,10 +1,11 @@
 """Signal plotting helpers."""
+from typing import Union
 import matplotlib.pyplot as plt
 import numpy as np
 import tools21cm as t2c
 from matplotlib.figure import Figure
 
-from karabo.simulation.signal.typing import Image2D, XFracDensFilePair
+from karabo.simulation.signal.typing import Image2D, Image3D, XFracDensFilePair
 
 
 class SignalPlotting:
@@ -45,23 +46,37 @@ class SignalPlotting:
         return fig
 
     @classmethod
-    def brightness_temperature(cls, data: Image2D) -> Figure:
+    def brightness_temperature(
+        cls, data: Union[Image2D, Image3D], z_layer: int = 0
+    ) -> Figure:
         """
         Plot the brightness temperature of a 2D image.
 
         Parameters
         ----------
-        data : Image2D
+        data : Union[Image2D, Image3D]
             The image to be plotted.
+
+        z_layer : int, optional
+            The Z layer to be used, when a Image3D is used.
 
         Returns
         -------
         Figure
             Figure of the plotted image
         """
+        image_data = data.data
+        x_label = data.x_label
+        y_label = data.y_label
+
+        if isinstance(data, Image3D):
+            image_data = image_data[z_layer, :, :]
+            x_label = x_label[z_layer, :, :]
+            y_label = y_label[z_layer, :, :]
+
         fig, ax = plt.subplots(1, 1, figsize=(6, 5))
         ax.set_title("21 cm signal")
-        colour_bar = ax.pcolormesh(data.x, data.y, data.data)
+        colour_bar = ax.pcolormesh(x_label, y_label, image_data)
         ax.set_xlabel(r"$x$ [Mpc]")
         ax.set_ylabel(r"$y$ [Mpc]")
         fig.colorbar(colour_bar, ax=ax, label="mK")

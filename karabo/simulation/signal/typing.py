@@ -89,19 +89,30 @@ class XFracDensFilePair(NamedTuple):
 
 @dataclass(frozen=True)
 class Image2D:
-    """A 2D image combined with a sky model."""
+    """A 2D image."""
 
-    data: Annotated[npt.NDArray[np.float_], Literal["N", "M"]]
+    data: Annotated[npt.NDArray[np.float_], Literal["X", "Y"]]
     """Image data in a 2D array."""
 
-    x: Annotated[npt.NDArray[np.float_], Literal["N"]]
+    x_label: Annotated[npt.NDArray[np.float_], Literal["X"]]
     """X-labels."""
 
-    y: Annotated[npt.NDArray[np.float_], Literal["M"]]
+    y_label: Annotated[npt.NDArray[np.float_], Literal["Y"]]
     """Y-labels."""
 
     redshift: float
     """Redshift value."""
+
+
+@dataclass(frozen=True)
+class Image3D(Image2D):
+    """A 3D cube of images along the z-axis."""
+
+    data: Annotated[npt.NDArray[np.float_], Literal["Z", "X", "Y"]]
+    """Image data in a 3D cube."""
+
+    z_label: Annotated[npt.NDArray[np.float_], Literal["Z"]]
+    """Z-labels."""
 
 
 @dataclass(frozen=True)

@@ -9,7 +9,8 @@ import tools21cm as t2c
 from karabo.data.external_data import DownloadObject
 from karabo.error import KaraboError
 from karabo.simulation.signal.base_signal import BaseSignal2D
-from karabo.simulation.signal.typing import Image2D, XFracDensFilePair
+from karabo.simulation.signal.plotting import SignalPlotting
+from karabo.simulation.signal.typing import Image3D, XFracDensFilePair
 
 
 class Signal21cm(BaseSignal2D):
@@ -36,9 +37,9 @@ class Signal21cm(BaseSignal2D):
         """
         self.files: Final[list[XFracDensFilePair]] = files
 
-    def simulate(self) -> list[Image2D]:
+    def simulate(self) -> list[Image3D]:
         """
-        Simulate the 21cm signal as a 2D intensity image.
+        Simulate the 21cm signal as a 3D intensity cube.
 
         Returns
         -------
@@ -51,12 +52,12 @@ class Signal21cm(BaseSignal2D):
         KaraboError
             If a pair of xfrac and dens files do not have the same redshift values.
         """
-        images: list[Image2D] = []
+        cubes: list[Image3D] = []
 
         for file in self.files:
             loaded = file.load()
 
-            if (z := loaded.x_file.z) != loaded.d_file.z:
+            if (redshift := loaded.x_file.z) != loaded.d_file.z:
                 raise KaraboError(
                     "The redshift of the xfrac and dens files are not the same", file
                 )
@@ -64,24 +65,35 @@ class Signal21cm(BaseSignal2D):
             x_frac = loaded.x_file.xi
             dens = loaded.d_file.cgs_density
 
-            dx, dy = (
+            dz, dx, dy = (
+                loaded.box_dims / x_frac.shape[0],
                 loaded.box_dims / x_frac.shape[1],
                 loaded.box_dims / x_frac.shape[2],
             )
-            y, x = np.mgrid[
-                slice(dy / 2, loaded.box_dims, dy), slice(dx / 2, loaded.box_dims, dx)
+            z, y, x = np.mgrid[
+                slice(dz / 2, loaded.box_dims, dz),
+                slice(dy / 2, loaded.box_dims, dy),
+                slice(dx / 2, loaded.box_dims, dx),
             ]
 
-            d_t = t2c.calc_dt(x_frac, dens, z)
+            d_t = t2c.calc_dt(x_frac, dens, redshift)
             d_t_subtracted = t2c.subtract_mean_signal(d_t, 0)
-            images.append(Image2D(data=d_t_subtracted[0, :, :], x=x, y=y, redshift=z))
+            cubes.append(
+                Image3D(
+                    data=d_t_subtracted,
+                    x_label=x,
+                    y_label=y,
+                    z_label=z,
+                    redshift=redshift,
+                )
+            )
 
-        return images
+        return cubes
 
     @staticmethod
     def default_r_hii(redshift: float) -> float:
         """
-        Default radius function for the lightcone HII region.
+        Lightcone HII region size calculation function (default implementation).
 
         Parameters
         ----------
@@ -102,9 +114,9 @@ class Signal21cm(BaseSignal2D):
         z: float,
         r_hii: Callable[[float], float] = default_r_hii,
         bubble_count: int = 3,
-    ) -> Image2D:
+    ) -> Image3D:
         """
-        Generate an image with randomized lighcones.
+        Generate an image with randomized lightcones.
 
         Parameters
         ----------
@@ -119,8 +131,8 @@ class Signal21cm(BaseSignal2D):
 
         Returns
         -------
-        Image2D
-            The generated image with multiple lightcones.
+        Image3D
+            The generated cube with multiple lightcones.
         """
         cube = np.zeros((n_cells, n_cells, n_cells))
         xx, yy, zz = np.meshgrid(
@@ -143,10 +155,11 @@ class Signal21cm(BaseSignal2D):
                 np.roll(np.roll(cube0, xx_0, axis=0), yy_0, axis=1), zz_0, axis=2
             )
 
-        return Image2D(
-            data=cube[100, :, :],
-            x=np.arange(0, n_cells, 1, dtype=float),
-            y=np.arange(0, n_cells, 1, dtype=float),
+        return Image3D(
+            data=cube,
+            x_label=np.arange(0, n_cells, 1, dtype=float),
+            y_label=np.arange(0, n_cells, 1, dtype=float),
+            z_label=np.arange(0, n_cells, 1, dtype=float),
             redshift=z,
         )
 
@@ -178,9 +191,18 @@ class Signal21cm(BaseSignal2D):
         ).get()
         dens_path = DownloadObject(
             dens_name,
-            f"https://ttt.astro.su.se/~gmell/244Mpc/densities/nc250/coarser_densities/{dens_name}",
+            "https://ttt.astro.su.se/~gmell/244Mpc/densities/nc250/coarser_densities/"
+            + f"{dens_name}",
         ).get()
 
         return XFracDensFilePair(
             xfrac_path=Path(xfrac_path), dens_path=Path(dens_path), box_dims=box_dims
         )
+
+
+z1 = Signal21cm.get_xfrac_dens_file(z=6.000, box_dims=244 / 0.7)
+z3 = Signal21cm.get_xfrac_dens_file(z=7.059, box_dims=244 / 0.7)
+sig = Signal21cm([z1, z3])
+signal_images = sig.simulate()
+fig = SignalPlotting.brightness_temperature(signal_images[0])
+fig.savefig("a.png")
