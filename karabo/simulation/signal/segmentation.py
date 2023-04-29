@@ -1,18 +1,16 @@
 """ TODO."""
 
-from pathlib import Path
-from typing import Callable, Final, Union
 
 import numpy as np
 import tools21cm as t2c
 import tools21cm.segmentation as t2cseg
 from matplotlib import pyplot as plt
 from sklearn.metrics import matthews_corrcoef
-from karabo.simulation.signal.plotting import SignalPlotting
 
+from karabo.simulation.signal.plotting import SignalPlotting
 from karabo.simulation.signal.signal_21_cm import Signal21cm
 from karabo.simulation.signal.superimpose import Superimpose
-from karabo.simulation.signal.typing import Image2D, Image2DOriented
+from karabo.simulation.signal.typing import Image3D
 
 
 class Segmentation:
@@ -20,20 +18,17 @@ class Segmentation:
     TODO
     """
 
-    def segment(self, image: Union[Image2DOriented, Image2D]) -> None:
+    def segment(self, image_cube: Image3D) -> None:
         """
         TODO
         """
 
         # inputs
-        dT_subtracted = image.data
-        redshift = image.redshift
+        dT2 = image_cube.data
+        redshift = image_cube.redshift
         boxsize = 244 / 0.7  # TODO change that box_s from the inputs comes
 
         # 35
-        # dT2 = dT_subtracted + noise_cube
-        dT2 = dT_subtracted
-
         dT_smooth = t2c.smooth_coeval(
             cube=dT2,  # Data cube that is to be smoothed
             z=redshift,  # Redshift of the coeval cube
@@ -45,7 +40,7 @@ class Segmentation:
 
         mask_xHI = (
             t2c.smooth_coeval(
-                cube=dT_subtracted,
+                cube=dT2,
                 z=redshift,
                 box_size_mpc=boxsize,
                 max_baseline=70.0,
@@ -66,7 +61,13 @@ class Segmentation:
         phicoef_seg = matthews_corrcoef(mask_xHI2.flatten(), xHI_seg.flatten())
 
         if True:
-            SignalPlotting.segmentploting(boxsize=boxsize, xHI_seg=xHI_seg, xHI_seg_err=xHI_seg_err, phicoef_seg=phicoef_seg, mask_xHI2=mask_xHI2)
+            SignalPlotting.segmentploting(
+                boxsize=boxsize,
+                xHI_seg=xHI_seg,
+                xHI_seg_err=xHI_seg_err,
+                phicoef_seg=phicoef_seg,
+                mask_xHI2=mask_xHI2,
+            )
 
 
 if __name__ == "__main__":
@@ -82,4 +83,4 @@ if __name__ == "__main__":
 
     seg = Segmentation()
     seg.segment(signal_images[0])
-    print("✂️ "*5 + "done with segmenting 🔍 " + "✂️ "*10)
+    print("✂️ " * 5 + "done with segmenting 🔍 " + "✂️ " * 10)
