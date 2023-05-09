@@ -5,8 +5,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tools21cm as t2c
 from matplotlib.figure import Figure
+from sklearn.metrics import matthews_corrcoef
 
-from karabo.simulation.signal.typing import Image2D, Image3D, XFracDensFilePair
+from karabo.simulation.signal.typing import (
+    Image2D,
+    Image3D,
+    SegmentationOutput,
+    XFracDensFilePair,
+)
 
 
 class SignalPlotting:
@@ -120,15 +126,17 @@ class SignalPlotting:
 
         return fig
 
-    # def segmentploting(self, seg :Segmentation, mask_xHI :NDArray[bool_], xHII_stitch):
-    def segmentploting(self, boxsize, xHI_seg, xHI_seg_err, phicoef_seg, mask_xHI2):
 
-        # plots
-        # 46
+class SegmentationPlotting:
+    """Plotting utilities for the segmentation."""
+
+    def _seg_u_net_plotting(
+        self, boxsize, xHI_seg, xHI_seg_err, phicoef_seg, mask_xHI2
+    ):
         fig, axs = plt.subplots(figsize=(12, 6), ncols=2, sharey=True, sharex=True)
         (ax1, ax2) = axs
 
-        ax1.set_title("SegU-Net ($r_{\phi}=%.3f$)" % phicoef_seg)
+        ax1.set_title(r"SegU-Net ($r_{\phi}=%.3f$)" % phicoef_seg)
         ax1.imshow(
             xHI_seg[0], origin="lower", cmap="jet", extent=[0, boxsize, 0, boxsize]
         )
@@ -151,8 +159,47 @@ class SignalPlotting:
         plt.subplots_adjust(hspace=0.1, wspace=0.01)
         for ax in axs.flat:
             ax.label_outer()
-        
+
         plt.savefig("./seg_TESTplot.png", dpi=200)
 
-        print("✏️ "*5 + "done with segmentploting 📊 " + "✏️ "*10)
+        print("✏️ " * 5 + "done with segmentploting 📊 " + "✏️ " * 10)
 
+    @classmethod
+    def superplotting(
+        cls,
+        segmented: SegmentationOutput,
+        signal_image: Image3D,
+    ):
+        """
+        Plot the first slice of the superpixel cube.
+
+        Parameters
+        ----------
+        segmented : SegmentationOutput
+            output of the segmentation
+        signal_image : Image3D
+            Image cube
+        """
+        dt2 = signal_image.data
+        box_dims = signal_image.box_dims
+        mask_xhi = segmented.mask_xhi
+        xhii_stitch = segmented.xhii_stitch
+        superpixel_map = signal_image.data
+        dt_smooth = segmented.dt_smooth
+
+        dx, dy = box_dims / dt2.shape[1], box_dims / dt2.shape[2]
+        y, x = np.mgrid[slice(dy / 2, box_dims, dy), slice(dx / 2, box_dims, dx)]
+        phicoef_sup = matthews_corrcoef(mask_xhi.flatten(), 1 - xhii_stitch.flatten())
+
+        plt.rcParams["figure.figsize"] = [18, 5]
+        plt.subplot(131)
+        plt.pcolormesh(x, y, superpixel_map[0], cmap="jet")
+        plt.subplot(132)
+        plt.pcolormesh(x, y, dt_smooth[0], cmap="jet")
+
+        plt.rcParams["figure.figsize"] = [12, 6]
+        plt.subplot(121)
+        plt.title(f"Super-Pixel: $r_{{\phi}}={phicoef_sup:.3f}$")
+        plt.pcolormesh(x, y, 1 - xhii_stitch[0], cmap="jet")
+        plt.contour(mask_xhi[0], colors="lime", extent=[0, box_dims, 0, box_dims])
+        # plt.savefig("testplot.png")

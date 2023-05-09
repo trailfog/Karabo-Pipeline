@@ -1,31 +1,33 @@
 """ TODO."""
 
 
+from typing import Union
 import numpy as np
 import tools21cm as t2c
 import tools21cm.segmentation as t2cseg
 from matplotlib import pyplot as plt
 from sklearn.metrics import matthews_corrcoef
+from karabo.simulation.signal.base_segmentation import BaseSegmentation
 
 from karabo.simulation.signal.plotting import SignalPlotting
 from karabo.simulation.signal.signal_21_cm import Signal21cm
 from karabo.simulation.signal.superimpose import Superimpose
-from karabo.simulation.signal.typing import Image3D
+from karabo.simulation.signal.typing import Image2D, Image3D
 
 
-class Segmentation:
+class SegUNetSegmentation(BaseSegmentation):
     """
     TODO
     """
 
-    def segment(self, image_cube: Image3D) -> None:
+    def segment(self, image: Image3D) -> Image3D:
         """
         TODO
         """
 
         # inputs
-        dT2 = image_cube.data
-        redshift = image_cube.redshift
+        dT2 = image.data
+        redshift = image.redshift
         boxsize = 244 / 0.7  # TODO change that box_s from the inputs comes
 
         # 35
@@ -60,15 +62,6 @@ class Segmentation:
         xHI_seg, xHI_seg_err = seg.prediction(x=dT_cut)
         phicoef_seg = matthews_corrcoef(mask_xHI2.flatten(), xHI_seg.flatten())
 
-        if True:
-            SignalPlotting.segmentploting(
-                boxsize=boxsize,
-                xHI_seg=xHI_seg,
-                xHI_seg_err=xHI_seg_err,
-                phicoef_seg=phicoef_seg,
-                mask_xHI2=mask_xHI2,
-            )
-
 
 if __name__ == "__main__":
     z1 = Signal21cm.get_xfrac_dens_file(z=6.000, box_dims=244 / 0.7)
@@ -81,6 +74,6 @@ if __name__ == "__main__":
     # superimpose_images = Superimpose.combine([signal_images, signal_images2])
     # seg.segment(superimpose_images[0])
 
-    seg = Segmentation()
+    seg = SegUNetSegmentation()
     seg.segment(signal_images[0])
     print("✂️ " * 5 + "done with segmenting 🔍 " + "✂️ " * 10)

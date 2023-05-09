@@ -89,6 +89,7 @@ class Superimpose:
                 x_label=signals[0].x_label,
                 y_label=signals[0].y_label,
                 redshift=signals[0].redshift,
+                box_dims=signals[0].box_dims,
             )
 
         signals_comb = cast(list[Union[Image2D, Image2DOriented]], signals)
@@ -108,4 +109,5 @@ class Superimpose:
             x_label=first_sig.x_label,
             y_label=first_sig.y_label,
             redshift=first_sig.redshift,
+            box_dims=first_sig.box_dims,
         )

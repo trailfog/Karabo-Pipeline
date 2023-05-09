@@ -87,6 +87,15 @@ class XFracDensFilePair(NamedTuple):
         )
 
 
+class SegmentationOutput(NamedTuple):
+    """Output of the segmentation."""
+
+    image: Image2D
+    xhii_stitch: npt.NDArray[np.bool_]
+    mask_xhi: npt.NDArray[np.bool_]
+    dt_smooth: npt.NDArray[np.float_]
+
+
 @dataclass(frozen=True)
 class BaseImage:
     """A general image, meant to be subclassed."""
@@ -102,6 +111,9 @@ class BaseImage:
 
     redshift: float
     """Redshift value."""
+
+    box_dims: float
+    """Box dimensions used to create the image."""
 
 
 @dataclass(frozen=True)

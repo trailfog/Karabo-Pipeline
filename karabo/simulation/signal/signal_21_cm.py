@@ -18,6 +18,7 @@ class Signal21cm(BaseSignal[Image3D]):
 
     Examples
     --------
+    >>> from karabo.simulation.signal.plotting import SignalPlotting
     >>> z1 = Signal21cm.get_xfrac_dens_file(z=6.000, box_dims=244 / 0.7)
     >>> z2 = Signal21cm.get_xfrac_dens_file(z=7.059, box_dims=244 / 0.7)
     >>> sig = Signal21cm([z1, z2])
@@ -85,6 +86,7 @@ class Signal21cm(BaseSignal[Image3D]):
                     y_label=y,
                     z_label=z,
                     redshift=redshift,
+                    box_dims=244 / 7,
                 )
             )
 
@@ -161,6 +163,7 @@ class Signal21cm(BaseSignal[Image3D]):
             y_label=np.arange(0, n_cells, 1, dtype=float),
             z_label=np.arange(0, n_cells, 1, dtype=float),
             redshift=z,
+            box_dims=244 / 7,
         )
 
     @staticmethod
