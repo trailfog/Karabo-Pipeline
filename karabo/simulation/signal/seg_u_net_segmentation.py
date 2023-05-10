@@ -6,13 +6,12 @@
 import pkg_resources
 import tools21cm as t2c
 
-from karabo.simulation.signal.base_segmentation import BaseSegmentation
-
 try:
     from tensorflow.keras.models import load_model
-except:
+except ImportError:  # noqa: E722
     from tensorflow.python.keras.models import load_model
 
+from karabo.simulation.signal.base_segmentation import BaseSegmentation
 from karabo.simulation.signal.plotting import SegmentationPlotting
 from karabo.simulation.signal.signal_21_cm import Signal21cm
 from karabo.simulation.signal.superimpose import Superimpose
@@ -28,47 +27,40 @@ class FixedSegUNet(t2c.segmentation.segunet21cm):
     """
 
     def __init__(self, tta=1, verbose=False):
-        """SegU-Net: segmentation of 21cm images with U-shape network (Bianco et al. 2021, https://arxiv.org/abs/2102.06713).
+        """SegU-Net: segmentation of 21cm images with U-shape network.
 
-           - tta (int): default 0 (super-fast, no pixel-error map) implement the error map
-                        with time-test aumentated technique in the prediction process
+           - tta (int): default 0 (super-fast, no pixel-error map) implement the error
+             map with time-test aumentated technique in the prediction process
            - verbose (bool): default False, activate verbosity
 
         Description:
-           tta = 0 : fast (~7 sec), it tends to be a few percent less accurate (<2%) then the other two cases, no pixel-error map (no TTA manipulation)
-           tta = 1 : medium (~17 sec), accurate and preferable than tta=0, with pixel-error map (3 samples)
-           tta = 2 : slow (~10 min), accurate, with pixel-error map (~100 samples)
+           tta = 0 : fast (~7 sec), it tends to be a few percent less accurate (<2%)
+           then the other two cases, no pixel-error map (no TTA manipulation) tta = 1 :
+           medium (~17 sec), accurate and preferable than tta=0, with pixel-error map (3
+           samples) tta = 2 : slow (~10 min), accurate, with pixel-error map (~100
+           samples)
 
         Returns:
-           - X_seg (ndarray) : recovered binary field (1 = neutral and 0 = ionized regions)
+           - X_seg (ndarray) : recovered binary field (1 = neutral and 0 = ionized
+             regions)
            - X_err (ndarray) : pixel-error map of the recovered binary field
 
         Example:
-         $ from tools21cm import segmentation
-         $ seg = segmentation.segunet21cm(tta=1, verbose=True)   # load model (need to be done once)
-         $ Xseg, Xseg_err = seg.prediction(x=dT3)
+         $ from tools21cm import segmentation $ seg = segmentation.segunet21cm(tta=1,
+         verbose=True)   # load model (need to be done once) $ Xseg, Xseg_err =
+         seg.prediction(x=dT3)
 
         Print of the Network's Configuration file:
-         [TRAINING]
-         BATCH_SIZE = 64
-         AUGMENT = NOISESMT
-         IMG_SHAPE = 128, 128
-         CHAN_SIZE = 256
-         DROPOUT = 0.05
-         KERNEL_SIZE = 3
-         EPOCHS = 100
-         LOSS = balanced_cross_entropy
-         METRICS = iou, dice_coef, binary_accuracy, binary_crossentropy
-         LR = 1e-3
-         RECOMP = False
-         GPUS = 2
-         PATH = /home/michele/Documents/PhD_Sussex/output/ML/dataset/inputs/data2D_128_030920/
+         [TRAINING] BATCH_SIZE = 64 AUGMENT = NOISESMT IMG_SHAPE = 128, 128 CHAN_SIZE =
+         256 DROPOUT = 0.05 KERNEL_SIZE = 3 EPOCHS = 100 LOSS = balanced_cross_entropy
+         METRICS = iou, dice_coef, binary_accuracy, binary_crossentropy LR = 1e-3 RECOMP
+         = False GPUS = 2 PATH =
+         /home/michele/Documents/PhD_Sussex/output/ML/dataset/inputs/data2D_128_030920/
 
-         [RESUME]
-         RESUME_PATH = /home/michele/Documents/PhD_Sussex/output/ML/dataset/outputs/new/02-10T23-52-36_128slice/
-         BEST_EPOCH = 56
-         RESUME_EPOCH = 66
+         [RESUME] RESUME_PATH = ./output/ML/dataset/outputs/new/02-10T23-52-36_128slice/
+         BEST_EPOCH = 56 RESUME_EPOCH = 66
         """
+        # pylint: disable=invalid-name
         self.TTA = tta
         self.VERBOSE = verbose
 
@@ -94,7 +86,8 @@ class FixedSegUNet(t2c.segmentation.segunet21cm):
             "dice_coef": t2c.segmentation.dice_coef,
         }
         self.MODEL_LOADED = load_model(MODEL_NAME, custom_objects=METRICS)
-        print(" Loaded model: %s" % MODEL_NAME)
+        print(f" Loaded model: {MODEL_NAME}")
+        # pylint: enable=invalid-name
 
 
 # pylint: disable=too-few-public-methods
@@ -140,7 +133,6 @@ class SegUNetSegmentation(BaseSegmentation):
         SegmentationOutput
             SegU-net cube
         """
-
         dt2 = image.data
         redshift = image.redshift
         boxsize = image.box_dims
