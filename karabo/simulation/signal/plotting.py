@@ -7,6 +7,7 @@ import tools21cm as t2c
 from matplotlib.figure import Figure
 from sklearn.metrics import matthews_corrcoef
 
+from karabo.error import KaraboError
 from karabo.simulation.signal.typing import (
     Image2D,
     Image3D,
@@ -130,22 +131,60 @@ class SignalPlotting:
 class SegmentationPlotting:
     """Plotting utilities for the segmentation."""
 
-    def _seg_u_net_plotting(
-        self, boxsize, xHI_seg, xHI_seg_err, phicoef_seg, mask_xHI2
+    @classmethod
+    def seg_u_net_plotting(
+        cls,
+        segmented: SegmentationOutput,
     ):
-        fig, axs = plt.subplots(figsize=(12, 6), ncols=2, sharey=True, sharex=True)
+        """
+        Plot the first slice of the segU-net cube.
+
+        Parameters
+        ----------
+        segmented : SegmentationOutput
+            output of the segmentation
+        """
+        # seg
+        xhi_seg = segmented.image.data
+        boxsize = segmented.image.box_dims
+        mask_xhi = segmented.mask_xhi
+        xhi_seg_err = segmented.xhi_seg_err
+        if xhi_seg_err is None:
+            raise KaraboError("xhi_seg_err should not be None.")
+        mask_xhi2 = mask_xhi[:128, :128, :128]
+
+        phicoef_seg = matthews_corrcoef(
+            mask_xhi2.flatten(), xhi_seg[:128, :128, :128].flatten()
+        )
+
+        fig, axs = plt.subplots(
+            figsize=(12, 6),
+            ncols=2,
+            sharey=True,
+            sharex=True,
+        )
         (ax1, ax2) = axs
 
-        ax1.set_title(r"SegU-Net ($r_{\phi}=%.3f$)" % phicoef_seg)
+        ax1.set_title(rf"SegU-Net ($r_{{\phi}}={phicoef_seg:.3f}$)")
         ax1.imshow(
-            xHI_seg[0], origin="lower", cmap="jet", extent=[0, boxsize, 0, boxsize]
+            xhi_seg[0],
+            origin="lower",
+            cmap="jet",
+            extent=[0, boxsize, 0, boxsize],
         )
-        ax1.contour(mask_xHI2[0], colors="lime", extent=[0, boxsize, 0, boxsize])
+        ax1.contour(
+            mask_xhi2[0],
+            colors="lime",
+            extent=[0, boxsize, 0, boxsize],
+        )
         ax1.set_xlabel("x [Mpc]")
 
         ax2.set_title("SegUNet Pixel-Error")
         im = ax2.imshow(
-            xHI_seg_err[0], origin="lower", cmap="jet", extent=[0, boxsize, 0, boxsize]
+            xhi_seg_err[0],
+            origin="lower",
+            cmap="jet",
+            extent=[0, boxsize, 0, boxsize],
         )
         fig.colorbar(
             im,
@@ -160,9 +199,7 @@ class SegmentationPlotting:
         for ax in axs.flat:
             ax.label_outer()
 
-        plt.savefig("./seg_TESTplot.png", dpi=200)
-
-        print("✏️ " * 5 + "done with segmentploting 📊 " + "✏️ " * 10)
+        # plt.savefig("./seg_TESTplot.png", dpi=200)
 
     @classmethod
     def superplotting(
@@ -184,6 +221,8 @@ class SegmentationPlotting:
         box_dims = signal_image.box_dims
         mask_xhi = segmented.mask_xhi
         xhii_stitch = segmented.xhii_stitch
+        if xhii_stitch is None:
+            raise KaraboError("xhii_stitch should not be None")
         superpixel_map = signal_image.data
         dt_smooth = segmented.dt_smooth
 
@@ -199,7 +238,7 @@ class SegmentationPlotting:
 
         plt.rcParams["figure.figsize"] = [12, 6]
         plt.subplot(121)
-        plt.title(f"Super-Pixel: $r_{{\phi}}={phicoef_sup:.3f}$")
+        plt.title(rf"Super-Pixel: $r_{{\phi}}={phicoef_sup:.3f}$")
         plt.pcolormesh(x, y, 1 - xhii_stitch[0], cmap="jet")
         plt.contour(mask_xhi[0], colors="lime", extent=[0, box_dims, 0, box_dims])
         # plt.savefig("testplot.png")
