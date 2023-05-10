@@ -135,7 +135,7 @@ class SegmentationPlotting:
     def seg_u_net_plotting(
         cls,
         segmented: SegmentationOutput,
-    ):
+    ) -> Figure:
         """
         Plot the first slice of the segU-net cube.
 
@@ -157,15 +157,16 @@ class SegmentationPlotting:
             mask_xhi2.flatten(), xhi_seg[:128, :128, :128].flatten()
         )
 
-        fig, axs = plt.subplots(
+        fig, (ax1, ax2) = plt.subplots(
             figsize=(12, 6),
             ncols=2,
             sharey=True,
             sharex=True,
         )
-        (ax1, ax2) = axs
 
-        ax1.set_title(rf"SegU-Net ($r_{{\phi}}={phicoef_seg:.3f}$)")
+        fig.suptitle("SegU-Net segmentation")
+
+        ax1.set_title(rf"($r_{{\phi}}={phicoef_seg:.3f}$)")
         ax1.imshow(
             xhi_seg[0],
             origin="lower",
@@ -179,7 +180,7 @@ class SegmentationPlotting:
         )
         ax1.set_xlabel("x [Mpc]")
 
-        ax2.set_title("SegUNet Pixel-Error")
+        ax2.set_title("Pixel-Error")
         im = ax2.imshow(
             xhi_seg_err[0],
             origin="lower",
@@ -196,17 +197,18 @@ class SegmentationPlotting:
         ax2.set_xlabel("x [Mpc]")
 
         plt.subplots_adjust(hspace=0.1, wspace=0.01)
-        for ax in axs.flat:
-            ax.label_outer()
 
-        # plt.savefig("./seg_TESTplot.png", dpi=200)
+        ax1.label_outer()
+        ax2.label_outer()
+
+        return fig
 
     @classmethod
-    def superplotting(
+    def superpixel_plotting(
         cls,
         segmented: SegmentationOutput,
         signal_image: Image3D,
-    ):
+    ) -> Figure:
         """
         Plot the first slice of the superpixel cube.
 
@@ -223,22 +225,23 @@ class SegmentationPlotting:
         xhii_stitch = segmented.xhii_stitch
         if xhii_stitch is None:
             raise KaraboError("xhii_stitch should not be None")
-        superpixel_map = signal_image.data
+        superpixel_map = segmented.image.data
         dt_smooth = segmented.dt_smooth
 
         dx, dy = box_dims / dt2.shape[1], box_dims / dt2.shape[2]
         y, x = np.mgrid[slice(dy / 2, box_dims, dy), slice(dx / 2, box_dims, dx)]
         phicoef_sup = matthews_corrcoef(mask_xhi.flatten(), 1 - xhii_stitch.flatten())
 
-        plt.rcParams["figure.figsize"] = [18, 5]
-        plt.subplot(131)
-        plt.pcolormesh(x, y, superpixel_map[0], cmap="jet")
-        plt.subplot(132)
-        plt.pcolormesh(x, y, dt_smooth[0], cmap="jet")
+        fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(18, 5))
 
-        plt.rcParams["figure.figsize"] = [12, 6]
-        plt.subplot(121)
-        plt.title(rf"Super-Pixel: $r_{{\phi}}={phicoef_sup:.3f}$")
-        plt.pcolormesh(x, y, 1 - xhii_stitch[0], cmap="jet")
-        plt.contour(mask_xhi[0], colors="lime", extent=[0, box_dims, 0, box_dims])
-        # plt.savefig("testplot.png")
+        fig.suptitle("Superpixel segmentation")
+        ax1.set_title("superpixel_map")
+        ax1.pcolormesh(x, y, superpixel_map[0], cmap="jet")
+        ax2.set_title("dt_smooth")
+        ax2.pcolormesh(x, y, dt_smooth[0], cmap="jet")
+
+        ax3.set_title(rf"$r_{{\phi}}={phicoef_sup:.3f}$")
+        ax3.pcolormesh(x, y, 1 - xhii_stitch[0], cmap="jet")
+        ax3.contour(mask_xhi[0], colors="lime", extent=[0, box_dims, 0, box_dims])
+
+        return fig

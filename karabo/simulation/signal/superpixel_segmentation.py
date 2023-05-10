@@ -7,7 +7,6 @@ import tools21cm as t2c
 from karabo.simulation.signal.base_segmentation import BaseSegmentation
 from karabo.simulation.signal.plotting import SegmentationPlotting
 from karabo.simulation.signal.signal_21_cm import Signal21cm
-from karabo.simulation.signal.superimpose import Superimpose
 from karabo.simulation.signal.typing import Image3D, SegmentationOutput
 
 
@@ -24,7 +23,7 @@ class SuperpixelSegmentation(BaseSegmentation):
     >>> seg = SuperpixelSegmentation(5000, 20)
     >>> seg = SuperpixelSegmentation(500, 5)
     >>> segmented = seg.segment(signal_images[0])
-    >>> SegmentationPlotting.superplotting(segmented, signal_images[0])
+    >>> SegmentationPlotting.superpixel_plotting(segmented, signal_images[0])
     """
 
     def __init__(
@@ -132,7 +131,7 @@ if __name__ == "__main__":
     # superimpose_images = Superimpose.combine([signal_images, signal_images2])
     # seg.segment(superimpose_images[0])
 
-    seg = SuperpixelSegmentation(max_baseline=70.0, n_segments=500, max_iter=5)
+    seg = SuperpixelSegmentation(max_baseline=35.0, n_segments=2500, max_iter=10)
     segmented = seg.segment(signal_images[1])
 
-    SegmentationPlotting.superplotting(segmented, signal_images[1])
+    SegmentationPlotting.superpixel_plotting(segmented, signal_images[1])

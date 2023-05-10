@@ -14,7 +14,6 @@ except ImportError:  # noqa: E722
 from karabo.simulation.signal.base_segmentation import BaseSegmentation
 from karabo.simulation.signal.plotting import SegmentationPlotting
 from karabo.simulation.signal.signal_21_cm import Signal21cm
-from karabo.simulation.signal.superimpose import Superimpose
 from karabo.simulation.signal.typing import Image3D, SegmentationOutput
 
 
@@ -193,7 +192,7 @@ if __name__ == "__main__":
     # superimpose_images = Superimpose.combine([signal_images, signal_images2])
     # seg.segment(superimpose_images[0])
 
-    seg = SegUNetSegmentation(max_baseline=70.0, tta=1)
+    seg = SegUNetSegmentation(max_baseline=70.0, tta=2)
     segmented = seg.segment(signal_images[1])
 
     SegmentationPlotting.seg_u_net_plotting(segmented=segmented)
