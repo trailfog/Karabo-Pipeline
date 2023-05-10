@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from astropy.wcs import WCS
 
 

@@ -1,12 +1,14 @@
 """EoR profile simulation."""
 
-from typing import Optional, Union
+from typing import Annotated, Literal, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
 
+from karabo.error import KaraboError
 from karabo.simulation.signal.typing import EoRProfileT
 
 
@@ -16,7 +18,10 @@ class EoRProfile:
 
     Examples
     --------
-    >>> eor = EoRProfile.simulate()
+    >>> rnd = np.random.rand(200)
+    >>> sum_rnd = np.cumsum(rnd)
+    >>> sum_rnd /= sum_rnd[-1]
+    >>> eor = EoRProfile.simulate(x_hi=sum_rnd)
     >>> EoRProfile.plot(eor)
     >>> plt.show()
     """
@@ -48,26 +53,25 @@ class EoRProfile:
     @classmethod
     def simulate(
         cls,
-        x_hi: float = 0.1,
+        x_hi: Annotated[npt.NDArray[np.float_], Literal["N"]],
         dv_r_over_dr: float = 0,
         f_range: tuple[float, float] = (1e6, 200e6),
-        plot_points: Union[float, int] = 1e6,
     ) -> EoRProfileT:
         """
         Calculate the approximate evolution of fluctuations in the 21cm brightness.
+
+        The number of points is determined by the resolution of the x_hi array.
 
         Implemented per https://arxiv.org/pdf/1602.02351.pdf, equation (1)
 
         Parameters
         ----------
-        x_hi : float, optional
-            Neutral hydrogen fraction, by default 0.1
+        x_hi : Annotated[npt.NDArray[np.float_], Literal["N"]]
+            Neutral hydrogen fraction.
         dv_r_over_dr : float, optional
             ???. By default 0
         f_range : tuple[float, float], optional
             Frequency range to plot in [Hz]. by default (2, 200e6)
-        plot_points : Union[float, int], optional
-            How many points to be plotted, by default 1e6
 
         Returns
         -------
@@ -76,7 +80,7 @@ class EoRProfile:
             the frequency in the first column and the corresponding EoR profile in the
             second.
         """
-        freq_range = np.linspace(*f_range, num=int(plot_points))
+        freq_range = np.linspace(*f_range, num=len(x_hi))
         z_range = (EoRProfile.frequency_21cm / freq_range) - 1
 
         eor_profile = (
@@ -93,12 +97,20 @@ class EoRProfile:
         return np.stack((freq_range, eor_profile), axis=-1)
 
     @classmethod
-    def plot(cls, profile: Optional[EoRProfileT] = None) -> Figure:
+    def plot(
+        cls,
+        x_hi: Optional[Annotated[npt.NDArray[np.float_], Literal["N"]]] = None,
+        profile: Optional[EoRProfileT] = None,
+    ) -> Figure:
         """
         Plot the fluctuation profile of the 21cm signal.
 
+        Either the x_hi parmater needs to be given or the calculated profile.
+
         Parameters
         ----------
+        x_hi : Optional[Annotated[npt.NDArray[np.float_], Literal["N"]]], optional
+            Neutral hydrogen fraction, by default None.
         profile : Optional[EoRProfileT], optional
             An optional profile to be plotted. If not given, a default EoR profile will
             be plotted. By default None.
@@ -109,7 +121,12 @@ class EoRProfile:
             The plotted figure of the 21cm signal.
         """
         if profile is None:
-            profile = cls.simulate()
+            if x_hi is None:
+                raise KaraboError(
+                    "Either the profile or the x_hi parameters need to be given."
+                )
+
+            profile = cls.simulate(x_hi)
 
         redshift = profile[:, 0]
         delta_tb = profile[:, 1]
@@ -125,9 +142,3 @@ class EoRProfile:
         ax.xaxis.set_minor_formatter(FuncFormatter(lambda y, _: f"{y:g}"))
 
         return fig
-
-
-if __name__ == "__main__":
-    eor = EoRProfile.simulate()
-    EoRProfile.plot(eor)
-    plt.show()
