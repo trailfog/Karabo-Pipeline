@@ -4,7 +4,6 @@ from typing import Generic, TypeVar
 
 from karabo.simulation.signal.typing import BaseImage
 
-
 T = TypeVar("T", bound=BaseImage)
 
 
