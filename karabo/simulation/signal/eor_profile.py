@@ -9,8 +9,7 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
 
 from karabo.error import KaraboError
-
-EoRProfileT = Annotated[npt.NDArray[np.float_], Literal["N", 2]]
+from karabo.simulation.signal.typing import EoRProfileT
 
 
 class EoRProfile:
@@ -19,7 +18,10 @@ class EoRProfile:
 
     Examples
     --------
-    >>> eor = EoRProfile.simulate()
+    >>> rnd = np.random.rand(200)
+    >>> sum_rnd = np.cumsum(rnd)
+    >>> sum_rnd /= sum_rnd[-1]
+    >>> eor = EoRProfile.simulate(x_hi=sum_rnd)
     >>> EoRProfile.plot(eor)
     >>> plt.show()
     """
@@ -140,15 +142,3 @@ class EoRProfile:
         ax.xaxis.set_minor_formatter(FuncFormatter(lambda y, _: f"{y:g}"))
 
         return fig
-
-
-if __name__ == "__main__":
-    rnd = np.random.rand(200)
-    sum_rnd = np.cumsum(rnd)
-    sum_rnd /= sum_rnd[-1]
-
-    # plt.plot(range(len(sum_rnd)), sum_rnd)
-
-    eor = EoRProfile.simulate(x_hi=sum_rnd)
-    EoRProfile.plot(eor)
-    plt.show()
