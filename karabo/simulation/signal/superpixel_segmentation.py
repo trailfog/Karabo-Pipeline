@@ -1,15 +1,17 @@
 """Segmentation with Superpixel."""
+
 # %%
 
 import tools21cm as t2c
-from karabo.simulation.signal.base_segmentation import BaseSegmentation
 
+from karabo.simulation.signal.base_segmentation import BaseSegmentation
+from karabo.simulation.signal.plotting import SegmentationPlotting
 from karabo.simulation.signal.signal_21_cm import Signal21cm
 from karabo.simulation.signal.superimpose import Superimpose
 from karabo.simulation.signal.typing import Image3D, SegmentationOutput
-from karabo.simulation.signal.plotting import SegmentationPlotting
 
 
+# pylint: disable=too-few-public-methods
 class SuperpixelSegmentation(BaseSegmentation):
     """
     Superpixel based segmentation.
@@ -25,23 +27,26 @@ class SuperpixelSegmentation(BaseSegmentation):
     >>> SegmentationPlotting.superplotting(segmented, signal_images[0])
     """
 
-    def __init__(self, n_segments: int = 1000, max_iter: int = 5) -> None:
+    def __init__(
+        self, max_baseline: float = 70.0, n_segments: int = 1000, max_iter: int = 5
+    ) -> None:
         """
         Superpixel based segmentation.
 
         Parameters
         ----------
-        n_segments : int
-            Number of segments for the t2c.slice_cube function. Default=1000
-        max_iter : int
-            Max number of iterations of the t2c.slice_cube function. Default=5
+        n_segments : int, optional
+            Number of segments for the t2c.slice_cube function, by default 1000
+        max_iter : int, optional
+            Max number of iterations of the t2c.slice_cube function, by default 5
         """
+        self.max_baseline = max_baseline
         self.n_segments = n_segments
         self.max_iter = max_iter
 
     def segment(self, image: Image3D) -> SegmentationOutput:
         """
-        Superpixel based segmentation
+        Superpixel based segmentation.
 
         Parameters
         ----------
@@ -53,8 +58,6 @@ class SuperpixelSegmentation(BaseSegmentation):
         SegmentationOutput
             Superpixel cube
         """
-
-        # inputs
         dt2 = image.data
         redshift = image.redshift
         box_dims = image.box_dims
@@ -63,7 +66,7 @@ class SuperpixelSegmentation(BaseSegmentation):
             cube=dt2,  # Data cube that is to be smoothed
             z=redshift,  # Redshift of the coeval cube
             box_size_mpc=box_dims,  # Box size in cMpc
-            max_baseline=70.0,  # Maximum baseline of the telescope
+            max_baseline=self.max_baseline,  # Maximum baseline of the telescope
             ratio=1.0,  # Ratio of smoothing scale in frequency direction
             nu_axis=2,
         )  # frequency axis
@@ -91,7 +94,11 @@ class SuperpixelSegmentation(BaseSegmentation):
 
         mask_xhi = (
             t2c.smooth_coeval(
-                dt2, redshift, box_size_mpc=box_dims, max_baseline=2.0, nu_axis=2
+                cube=dt2,
+                z=redshift,
+                box_size_mpc=box_dims,
+                max_baseline=self.max_baseline,
+                nu_axis=2,
             )
             < 0.5
         )
@@ -110,6 +117,7 @@ class SuperpixelSegmentation(BaseSegmentation):
             xhii_stitch=xhii_stitch,
             mask_xhi=mask_xhi,
             dt_smooth=dt_smooth,
+            xhi_seg_err=None,
         )
 
 
@@ -124,7 +132,7 @@ if __name__ == "__main__":
     # superimpose_images = Superimpose.combine([signal_images, signal_images2])
     # seg.segment(superimpose_images[0])
 
-    seg = SuperpixelSegmentation(500, 5)
+    seg = SuperpixelSegmentation(max_baseline=70.0, n_segments=500, max_iter=5)
     segmented = seg.segment(signal_images[1])
 
     SegmentationPlotting.superplotting(segmented, signal_images[1])

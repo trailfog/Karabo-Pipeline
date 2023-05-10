@@ -90,10 +90,11 @@ class XFracDensFilePair(NamedTuple):
 class SegmentationOutput(NamedTuple):
     """Output of the segmentation."""
 
-    image: Image2D
-    xhii_stitch: npt.NDArray[np.bool_]
+    image: Image3D
+    xhii_stitch: npt.NDArray[np.bool_] | None
     mask_xhi: npt.NDArray[np.bool_]
     dt_smooth: npt.NDArray[np.float_]
+    xhi_seg_err: npt.NDArray[np.float_] | None
 
 
 @dataclass(frozen=True)

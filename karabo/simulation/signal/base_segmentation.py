@@ -1,6 +1,5 @@
 """Base segmentation class."""
 from abc import ABC, abstractmethod
-from typing import Union, overload
 
 from karabo.simulation.signal.typing import Image3D, SegmentationOutput
 
