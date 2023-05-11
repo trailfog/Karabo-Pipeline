@@ -131,6 +131,7 @@ class SignalGalacticForeground(BaseSignal[Image2D]):
                     x_label=x_label,
                     y_label=y_label,
                     redshift=redshift,
+                    box_dims=0,  # TODO
                 )
             )
 

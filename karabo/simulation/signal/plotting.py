@@ -312,3 +312,5 @@ class SegmentationPlotting:
         ax3.set_title(rf"$r_{{\phi}}={phicoef_sup:.3f}$")
         ax3.pcolormesh(x, y, 1 - xhii_stitch[0], cmap="jet")
         ax3.contour(mask_xhi[0], colors="lime", extent=[0, box_dims, 0, box_dims])
+
+        return fig

@@ -166,6 +166,7 @@ class SynchrotonSignal(BaseSignal[Image2D]):
                 x_label=x_label,
                 y_label=y_label,
                 redshift=0,
+                box_dims=0,  # TODO
             )
         ]
 

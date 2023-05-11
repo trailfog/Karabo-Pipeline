@@ -106,7 +106,7 @@ class Superimpose:
     @classmethod
     def combine(
         cls,
-        signals: Union[list[Image2D], list[Image3D], list[Union[Image2D, Image3D]]],
+        *signals: Union[list[Image2D], list[Image3D], list[Union[Image2D, Image3D]]],
     ) -> Union[Image2D, Image3D]:
         """
         Superimpose two or more signals int a single signal.
