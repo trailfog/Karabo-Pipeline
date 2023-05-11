@@ -192,7 +192,9 @@ if __name__ == "__main__":
     # superimpose_images = Superimpose.combine([signal_images, signal_images2])
     # seg.segment(superimpose_images[0])
 
-    seg = SegUNetSegmentation(max_baseline=70.0, tta=2)
+    seg = SegUNetSegmentation(max_baseline=70.0, tta=1)
     segmented = seg.segment(signal_images[1])
 
     SegmentationPlotting.seg_u_net_plotting(segmented=segmented)
+
+# %%
