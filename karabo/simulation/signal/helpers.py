@@ -224,4 +224,5 @@ def map_radec_datapoints_to_grid(
             pixel_value = np.median(filt[filt > 0])
             grid[x, y] = pixel_value
 
+    grid = np.nan_to_num(grid)
     return grid

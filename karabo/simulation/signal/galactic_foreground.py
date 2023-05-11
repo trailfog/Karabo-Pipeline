@@ -1,5 +1,4 @@
 """Galactic Foreground signal catalogue wrapper."""
-
 from pathlib import Path
 from typing import Annotated, Final, Literal, Optional
 
@@ -22,6 +21,7 @@ class SignalGalacticForeground(BaseSignal[Image2D]):
 
     Examples
     --------
+    >>> from karabo.simulation.signal.plotting import SignalPlotting
     >>> cent = SkyCoord(ra=10 * units.degree, dec=20 * units.degree, frame="icrs")
     >>> gf = SignalGalacticForeground(
     ...    cent,
@@ -30,6 +30,7 @@ class SignalGalacticForeground(BaseSignal[Image2D]):
     ...    fov=Angle([20, 20], unit=units.degree),
     ... )
     >>> imgs = gf.simulate()
+    >>> SignalPlotting.general_img(imgs[0], "Galactic foreground")
     """
 
     RA_COLUMN: Final[str] = "RAJ2000"

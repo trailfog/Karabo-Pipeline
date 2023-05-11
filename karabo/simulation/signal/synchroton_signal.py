@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Annotated, Literal, Optional
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from astropy.coordinates import Angle, SkyCoord
 from astropy.io import fits
@@ -22,7 +23,7 @@ class SynchrotonSignal(BaseSignal[Image2D]):
 
     Examples
     --------
-    >>> import matplotlib.pyplot as plt
+    >>> from karabo.simulation.signal.plotting import SignalPlotting
     >>> from astropy import units
     >>> cent = SkyCoord(ra=10 * units.degree, dec=10 * units.degree, frame="icrs")
     >>> sync_sig = SynchrotonSignal(
@@ -31,7 +32,7 @@ class SynchrotonSignal(BaseSignal[Image2D]):
     ...     grid_size=(100, 100),
     ... )
     >>> imgs = sync_sig.simulate()
-    >>> plt.imshow(imgs[0].data, origin="lower")
+    >>> SignalPlotting.general_img(imgs[0], "Synchroton")
     """
 
     DEFAULT_FITS = (
@@ -152,6 +153,13 @@ class SynchrotonSignal(BaseSignal[Image2D]):
             bottom_left.degree[1], top_right.degree[1], num=self.grid_size[1]
         )
 
+        grid_intensity = self._tb_conv(
+            freq=grid_intensity,
+            source_freq=408,
+            target_freq=100,
+            alpha=2.55,
+        )
+
         return [
             Image2D(
                 data=grid_intensity,
@@ -160,3 +168,13 @@ class SynchrotonSignal(BaseSignal[Image2D]):
                 redshift=0,
             )
         ]
+
+    @classmethod
+    def _tb_conv(
+        cls,
+        freq: npt.NDArray[np.float_],
+        source_freq: float,
+        target_freq: float,
+        alpha: float,
+    ) -> npt.NDArray[np.float_]:
+        return freq * (target_freq / source_freq) ** alpha

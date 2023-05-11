@@ -84,7 +84,8 @@ class SignalPlotting:
 
         return fig
 
-    def power_spectrum(self, data: XFracDensFilePair, kbins: int = 15) -> Figure:
+    @classmethod
+    def power_spectrum(cls, data: XFracDensFilePair, kbins: int = 15) -> Figure:
         """
         Plot the power spectrum the 21cm signal.
 
@@ -117,5 +118,72 @@ class SignalPlotting:
         ax.loglog(ks, ps * ks**3 / 2 / np.pi**2)
         ax.set_xlabel(r"k (Mpc$^{-1}$)")
         ax.set_ylabel(r"P(k) k$^{3}$/$(2\pi^2)$")
+
+        return fig
+
+    # pylint: disable=too-many-arguments,too-many-locals
+    @classmethod
+    def general_img(
+        cls,
+        img: Image2D,
+        title: str,
+        tick_count: int = 5,
+        x_label: str = "RA [°]",
+        y_label: str = "DEC [°]",
+        bar_label: str = "Temperature [K]",
+        log_img: bool = False,
+    ) -> Figure:
+        """
+        Plot a general image with a temperature.
+
+        Parameters
+        ----------
+        img : Image2D
+            The image to be plotted.
+        title : str
+            Title to be shown in the figure.
+        tick_count : int, optional
+            The count of ticks to show anlong each axis, by default 5
+        x_label : str
+            Label to be plotted along the X-axis.
+        y_label : str
+            Label to be plotted along the Y-axis.
+        bar_label: str
+            Label for the colour bar.
+        log_img : bool, optional
+            If the image should undergo a log transformation before being plotted, by
+            default False
+
+        Returns
+        -------
+        Figure
+            The resulting plot figure.
+        """
+        fig, ax = plt.subplots(1, 1)
+
+        data = img.data
+        if log_img:
+            data = np.log(data)
+
+        im = ax.imshow(data, origin="lower")
+        plt.colorbar(im, ax=ax, label=bar_label)
+
+        x_pos = np.linspace(0, img.data.shape[0] - 1, tick_count)
+        x_labels = np.around(
+            np.linspace(img.x_label[0], img.x_label[-1], tick_count), 2
+        )
+
+        y_pos = np.linspace(0, img.data.shape[1] - 1, tick_count)
+        y_labels = np.around(
+            np.linspace(img.y_label[0], img.y_label[-1], tick_count), 2
+        )
+
+        ax.xaxis.set_ticks(x_pos, labels=x_labels)
+        ax.yaxis.set_ticks(y_pos, labels=y_labels)
+
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+
+        fig.suptitle(title)
 
         return fig
