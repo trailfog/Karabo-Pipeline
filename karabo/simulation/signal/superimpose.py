@@ -93,7 +93,6 @@ class Superimpose:
 
         signals_comb = cast(list[Union[Image2D, Image2DOriented]], signals)
         if has_unoriented:
-            # TODO: Orient the unoriented
             ...
 
         signals_oriented = cast(list[Image2DOriented], signals_comb)
