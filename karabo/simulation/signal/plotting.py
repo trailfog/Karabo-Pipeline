@@ -203,6 +203,7 @@ class SegmentationPlotting:
 
         return fig
 
+    # pylint: disable=too-many-locals
     @classmethod
     def superpixel_plotting(
         cls,

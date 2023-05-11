@@ -1,62 +1,131 @@
 """Superimpose two or more signals."""
-from typing import Union, cast, overload
+from typing import Union
 
 import numpy as np
 
 from karabo.error import KaraboError
-from karabo.simulation.signal.typing import Image2D, Image2DOriented
+from karabo.simulation.signal.typing import Image2D, Image3D
 
 
 # pylint: disable=too-few-public-methods
 class Superimpose:
     """Superimpose two or more signals."""
 
-    @overload
     @classmethod
-    def combine(cls, signals: list[Image2DOriented]) -> Image2DOriented:
-        ...
-
-    @overload
-    @classmethod
-    def combine(cls, signals: list[Image2D]) -> Image2D:
-        ...
-
-    @overload
-    @classmethod
-    def combine(  # type: ignore
+    def _combine_2_images_2d(
         cls,
-        signals: list[Union[Image2D, Image2DOriented]],
-    ) -> Image2DOriented:
-        ...
+        first_image_2d: Image2D,
+        second_image_2d: Image2D,
+    ) -> Image2D:
+        """
+        Combine the data of two 2D images.
+
+        Parameters
+        ----------
+        first_image_data_2d : npt.NDArray[np.float_]
+            First image data to be combined
+        second_image_data_2d : npt.NDArray[np.float_]
+            Second image data to be combined
+
+        Returns
+        -------
+        npt.NDArray[np.float_]
+            Combined image data
+        """
+        data = np.add(second_image_2d.data, first_image_2d.data)
+        return Image2D(
+            data=data,
+            x_label=second_image_2d.x_label,
+            y_label=second_image_2d.y_label,
+            redshift=second_image_2d.redshift,
+            box_dims=second_image_2d.box_dims,
+        )
+
+    @classmethod
+    def _combine_images_3d_2d(
+        cls,
+        image_3d: Image3D,
+        image_2d: Image2D,
+    ) -> Image3D:
+        """
+        Combine the data of a 3D and 2D images.
+
+        Parameters
+        ----------
+        image_data_3d : npt.NDArray[np.float_]
+            3D image data to be combined
+        image_data_2d : npt.NDArray[np.float_]
+            Image data to be combined
+
+        Returns
+        -------
+        npt.NDArray[np.float_]
+            Combined image data
+        """
+        data = np.add(image_3d.data, image_2d.data)
+        return Image3D(
+            data=data,
+            x_label=image_3d.x_label,
+            y_label=image_3d.y_label,
+            z_label=image_3d.z_label,
+            redshift=image_3d.redshift,
+            box_dims=image_3d.box_dims,
+        )
+
+    @classmethod
+    def _combine_2_images_3d(
+        cls,
+        first_image_3d: Image3D,
+        second_image_3d: Image3D,
+    ) -> Image3D:
+        """
+        Combine the data of two 3D images.
+
+        Parameters
+        ----------
+        first_image_data_3d : npt.NDArray[np.float_]
+            3D image data to be combined
+        second_image_data_3d : npt.NDArray[np.float_]
+            3D image data to be combined
+
+        Returns
+        -------
+        npt.NDArray[np.float_]
+            Combined image data
+        """
+        data = np.add(first_image_3d.data, second_image_3d.data)
+        return Image3D(
+            data=data,
+            x_label=first_image_3d.x_label,
+            y_label=first_image_3d.y_label,
+            z_label=first_image_3d.z_label,
+            redshift=first_image_3d.redshift,
+            box_dims=first_image_3d.box_dims,
+        )
 
     @classmethod
     def combine(
         cls,
-        signals: Union[
-            list[Image2D], list[Image2DOriented], list[Union[Image2D, Image2DOriented]]
-        ],
-    ) -> Union[Image2D, Image2DOriented]:
+        signals: Union[list[Image2D], list[Image3D], list[Union[Image2D, Image3D]]],
+    ) -> Union[Image2D, Image3D]:
         """
         Superimpose two or more signals int a single signal.
 
-        Superimposing is done by adding each signal to the previous one. If a simple 2D
-        Image is passed with an oriented image, the simple 2D Image will be "oriented"
-        in the same direction s the oriented one.
-
-        This function does not check if all oriented signals have the same orientation.
+        Superimposing is done by adding each signal to the previous one. To combine a
+        Image3D with a Image2D, the Image2D will be added to every layer of the Image3D.
 
         If only one signal is passed, it gets returned without any further processing.
 
         Parameters
         ----------
-        signals : Union[list[Image2D], list[Union[Image2D, Image2DOriented]]]
+        signals : Union[list[Image2D], list[Image3D], list[Union[Image2D, Image3D]]]
             The signals that are to be combined.
 
         Returns
         -------
-        Union[Image2D, Image2DOriented]
-            Either a Image2D if no oriented image is passed in, otherwise an oriented
-            image is returned.
+        Union[Image2D, Image3D]
+            If the input includes at least one Image3D, the returntype is a Image3D,
+            else Image2D.
 
         Raises
         ------
@@ -71,42 +140,18 @@ class Superimpose:
                 "You need to pass at least one signals to superimpose them."
             )
 
-        oriented_count = 0
-        for obj in signals:
-            if isinstance(obj, Image2DOriented):
-                oriented_count += 1
+        image_merge = signals[0]
+        for idx in range(1, len(signals)):
+            next_image = signals[idx]
+            if isinstance(image_merge, Image2D) and isinstance(next_image, Image2D):
+                image_merge = cls._combine_2_images_2d(image_merge, next_image)
+            elif isinstance(image_merge, Image3D) and isinstance(next_image, Image2D):
+                image_merge = cls._combine_images_3d_2d(image_merge, next_image)
+            elif isinstance(image_merge, Image2D) and isinstance(next_image, Image3D):
+                image_merge = cls._combine_images_3d_2d(next_image, image_merge)
+            elif isinstance(image_merge, Image3D) and isinstance(next_image, Image3D):
+                image_merge = cls._combine_2_images_3d(image_merge, next_image)
+            else:
+                raise KaraboError(f"Unknown image types {image_merge} / {next_image}")
 
-        has_unoriented = (sig_count - oriented_count) > 0
-        has_oriented = oriented_count > 0
-
-        if has_unoriented and not has_oriented:
-            signals_unoriented = cast(list[Image2D], signals)
-            output = np.zeros(shape=signals_unoriented[0].data.shape)
-            for signal in signals_unoriented:
-                output += signal.data
-            return Image2D(
-                data=output,
-                x_label=signals[0].x_label,
-                y_label=signals[0].y_label,
-                redshift=signals[0].redshift,
-                box_dims=signals[0].box_dims,
-            )
-
-        signals_comb = cast(list[Union[Image2D, Image2DOriented]], signals)
-        if has_unoriented:
-            ...
-
-        signals_oriented = cast(list[Image2DOriented], signals_comb)
-        output = np.zeros(shape=signals_oriented[0].data.shape)
-        for o_signal in signals_oriented:
-            output += o_signal.data
-
-        first_sig = signals_oriented[0]
-        return Image2DOriented(
-            sky_model=first_sig.sky_model,
-            data=output,
-            x_label=first_sig.x_label,
-            y_label=first_sig.y_label,
-            redshift=first_sig.redshift,
-            box_dims=first_sig.box_dims,
-        )
+        return image_merge
