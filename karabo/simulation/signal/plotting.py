@@ -157,11 +157,9 @@ class SegmentationPlotting:
             mask_xhi2.flatten(), xhi_seg[:128, :128, :128].flatten()
         )
 
-        fig, (ax1, ax2) = plt.subplots(
-            figsize=(12, 6),
-            ncols=2,
-            sharey=True,
-            sharex=True,
+        fig, (ax1, ax2, ax3) = plt.subplots(
+            figsize=(20, 6),
+            ncols=3,
         )
 
         fig.suptitle("SegU-Net segmentation")
@@ -191,16 +189,18 @@ class SegmentationPlotting:
             im,
             label=r"$\sigma_{std}$",
             ax=ax2,
-            pad=0.02,
-            cax=fig.add_axes([0.905, 0.25, 0.02, 0.51]),
         )
         ax2.set_xlabel("x [Mpc]")
 
-        plt.subplots_adjust(hspace=0.1, wspace=0.01)
+        ax3.set_title("Pixel-Error-Histogram")
+        ax3.hist(xhi_seg_err[0].flatten(), bins=50)
+        ax3.set_ylabel("Count")
+        ax3.set_yscale("log")
+        ax3.set_xlabel(r"$\sigma_{std}$")
 
-        ax1.label_outer()
-        ax2.label_outer()
+        plt.subplots_adjust(hspace=0.2, wspace=0.2)
 
+        fig.tight_layout()
         return fig
 
     @classmethod
