@@ -1,5 +1,6 @@
 """Helpers for generating different types of signals."""
 
+import multiprocessing
 from typing import Annotated, Literal
 
 import numpy as np
@@ -177,6 +178,7 @@ def map_radec_datapoints_to_grid(
     ra_column: str,
     dec_column: str,
     intensity_column: str,
+    par_count: int = 5,
 ) -> Annotated[npt.NDArray[np.float_], Literal["X", "Y"]]:
     """
     Map the given datapoints with a destination to source mapping.
@@ -196,6 +198,8 @@ def map_radec_datapoints_to_grid(
         Name of the DEC column in the dataframe.
     intensity_column : str
         Name of the column to use for the intensities.
+    par_count : int, optional
+        How many processes to use to map the datapoints. By default 5.
 
     Returns
     -------
@@ -203,20 +207,63 @@ def map_radec_datapoints_to_grid(
         A 2D numpy array representing an image with the dimensions of the grid_size
         parameter.
     """
-    grid = np.zeros(grid_size)
-
     x_min, x_max = data[ra_column].agg(["min", "max"])
     y_min, y_max = data[dec_column].agg(["min", "max"])
 
     x_delta = (x_max - x_min) / grid_size[0]
     y_delta = (y_max - y_min) / grid_size[1]
 
-    for x in range(grid_size[0]):
-        x_beg = x_min + x * x_delta
+    width = grid_size[1]
+
+    args: list[
+        tuple[pd.DataFrame, str, str, str, float, float, float, float, int, int, int]
+    ] = []
+    for x in range(int(grid_size[0] / par_count)):
+        args.append(
+            (
+                data,
+                ra_column,
+                dec_column,
+                intensity_column,
+                x_min,
+                x_delta,
+                y_min,
+                y_delta,
+                width,
+                x * par_count,
+                par_count,
+            )
+        )
+
+    with multiprocessing.Pool(par_count) as p:
+        chunks: list[npt.NDArray[np.float_]] = p.starmap(
+            _map_radec_datapoints_rows,
+            args,
+        )
+    return np.nan_to_num(np.vstack(chunks))
+
+
+def _map_radec_datapoints_rows(
+    data: pd.DataFrame,
+    ra_column: str,
+    dec_column: str,
+    intensity_column: str,
+    x_min: float,
+    x_delta: float,
+    y_min: float,
+    y_delta: float,
+    width: int,
+    x_start: int,
+    par_count: int,
+) -> npt.NDArray[np.float_]:
+    grid = np.zeros((par_count, width))
+
+    for x in range(par_count):
+        x_beg = x_min + (x + x_start) * x_delta
         x_end = x_beg + x_delta
         ra_filter = (data[ra_column] >= x_beg) & (data[ra_column] < x_end)
 
-        for y in range(grid_size[1]):
+        for y in range(width):
             y_beg = y_min + y * y_delta
             y_end = y_beg + y_delta
             dec_filter = (data[dec_column] >= y_beg) & (data[dec_column] < y_end)
@@ -225,7 +272,6 @@ def map_radec_datapoints_to_grid(
             pixel_value = np.median(filt[filt > 0])
             grid[x, y] = pixel_value
 
-    grid = np.nan_to_num(grid)
     return grid
 
 
