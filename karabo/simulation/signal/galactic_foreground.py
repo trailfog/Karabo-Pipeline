@@ -1,4 +1,6 @@
 """Galactic Foreground signal catalogue wrapper."""
+
+import re
 from pathlib import Path
 from typing import Annotated, Final, Literal, Optional
 
@@ -22,10 +24,11 @@ class SignalGalacticForeground(BaseSignal[Image2D]):
     Examples
     --------
     >>> from karabo.simulation.signal.plotting import SignalPlotting
+    >>> available_redshifts = SignalGalacticForeground.available_redshifts()
     >>> cent = SkyCoord(ra=10 * units.degree, dec=20 * units.degree, frame="icrs")
     >>> gf = SignalGalacticForeground(
     ...    cent,
-    ...    redshifts=[7.6],
+    ...    redshifts=available_redshifts[:3],
     ...    grid_size=(30, 30),
     ...    fov=Angle([20, 20], unit=units.degree),
     ... )
@@ -63,10 +66,6 @@ class SignalGalacticForeground(BaseSignal[Image2D]):
             Path to the gleam catalogue path to use, by default None. If None, the
             default GELAM Catalogue from Karabo is used.
         """
-        if gleam_file_path is None:
-            gleam_file_path = Path(GLEAMSurveyDownloadObject().get())
-
-        self.gleam_file_path = gleam_file_path
         self.centre = centre
         self.redshifts = redshifts
         self.grid_size = grid_size
@@ -74,24 +73,32 @@ class SignalGalacticForeground(BaseSignal[Image2D]):
         fov.wrap_angle = 180 * units.deg
         self.fov = fov
 
-        self.gleam_catalogue = Table.read(gleam_file_path)
+        (
+            self.gleam_catalogue,
+            self.gleam_file_path,
+        ) = SignalGalacticForeground._load_gleam(gleam_file_path)
+
+    @classmethod
+    def _load_gleam(cls, gleam_file_path: Optional[Path]) -> tuple[Table, Path]:
+        if gleam_file_path is None:
+            gleam_file_path = Path(GLEAMSurveyDownloadObject().get())
+        return Table.read(gleam_file_path), gleam_file_path
 
     def simulate(self) -> list[Image2D]:
         """Simulate a signal to get a 2D image output."""
         images: list[Image2D] = []
 
+        all_redshifts = SignalGalacticForeground.available_redshifts(
+            gleam_catalogue=self.gleam_catalogue
+        )
         for redshift in self.redshifts:
-            flux_column = SignalGalacticForeground._flux_column(redshift)
-
-            redshifts = [
-                col for col in self.gleam_catalogue.columns if col.startswith("Fint")
-            ]
-            if flux_column not in redshifts:
+            if np.around(redshift, 1) not in all_redshifts:
                 raise KaraboError(
                     "The GLEAM catalogue does not contain the redshift value of "
-                    + f"{redshift}. Available: {redshifts}"
+                    + f"{redshift}. Available: {all_redshifts}"
                 )
 
+            flux_column = SignalGalacticForeground._flux_column(redshift)
             pos_df = self.gleam_catalogue[
                 self.gleam_catalogue[flux_column] >= 0
             ].to_pandas()
@@ -136,6 +143,43 @@ class SignalGalacticForeground(BaseSignal[Image2D]):
             )
 
         return images
+
+    @classmethod
+    def available_redshifts(
+        cls,
+        gleam_file_path: Optional[Path] = None,
+        gleam_catalogue: Optional[Table] = None,
+    ) -> list[float]:
+        """
+        Get a list from available redshift values (as float).
+
+        If the gleam catalogue is given, it will take precedents over the path. Else, if
+        no path is given, the default catalogue will bi used.
+
+        Parameters
+        ----------
+        gleam_file_path : Optional[Path], optional
+            Path to the gleam catalogue, by default None
+        gleam_catalogue : Optional[Table], optional
+            Gleam catalogue data, by default None
+
+        Returns
+        -------
+        list[float]
+            List of available redshift values.
+        """
+        re_intensitiy_col = re.compile("Fint([0-9]+)")
+        redshifts: list[float] = []
+
+        if gleam_catalogue is None:
+            gleam_catalogue, _ = SignalGalacticForeground._load_gleam(gleam_file_path)
+
+        for col in gleam_catalogue.columns:
+            intensitiy_col = re_intensitiy_col.search(col)
+            if intensitiy_col is not None:
+                redshifts.append(int(intensitiy_col.group(1)) / 10)
+
+        return redshifts
 
     @classmethod
     def _flux_column(cls, redshift: float) -> str:
