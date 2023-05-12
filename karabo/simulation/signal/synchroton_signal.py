@@ -17,7 +17,7 @@ from karabo.simulation.signal.typing import Image2D
 
 
 # pylint: disable=too-many-instance-attributes,too-few-public-methods
-class SynchrotonSignal(BaseSignal[Image2D]):
+class SignalSynchroton(BaseSignal[Image2D]):
     """
     Synchroton signal.
 
@@ -26,7 +26,7 @@ class SynchrotonSignal(BaseSignal[Image2D]):
     >>> from karabo.simulation.signal.plotting import SignalPlotting
     >>> from astropy import units
     >>> cent = SkyCoord(ra=10 * units.degree, dec=10 * units.degree, frame="icrs")
-    >>> sync_sig = SynchrotonSignal(
+    >>> sync_sig = SignalSynchroton(
     ...     centre=cent,
     ...     fov=Angle([20, 20], unit=units.degree),
     ...     grid_size=(100, 100),
@@ -39,6 +39,8 @@ class SynchrotonSignal(BaseSignal[Image2D]):
         "https://lambda.gsfc.nasa.gov/data/foregrounds/haslam/images/"
         "lambda_mollweide_haslam408_dsds.fits"
     )
+    MAX_GRID_X = 190
+    MAX_GRID_Y = 190
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -76,7 +78,7 @@ class SynchrotonSignal(BaseSignal[Image2D]):
             diffuse_emission_path = Path(
                 DownloadObject(
                     "lambda_mollweide_haslam408_dsds.fits",
-                    SynchrotonSignal.DEFAULT_FITS,
+                    SignalSynchroton.DEFAULT_FITS,
                 ).get()
             )
 
@@ -138,13 +140,20 @@ class SynchrotonSignal(BaseSignal[Image2D]):
             ra_column="RA",
             dec_column="DEC",
         )
+        grid_size = (
+            min(SignalSynchroton.MAX_GRID_X, self.grid_size[0]),
+            min(SignalSynchroton.MAX_GRID_Y, self.grid_size[1]),
+        )
         grid_intensity = helpers.map_radec_datapoints_to_grid(
             pos_df,
-            grid_size=self.grid_size,
+            grid_size=grid_size,
             ra_column="RA",
             dec_column="DEC",
             intensity_column="intensity",
         )
+
+        if grid_size != self.grid_size:
+            grid_intensity = helpers.interpolate_image(grid_intensity, self.grid_size)
 
         x_label = np.linspace(
             bottom_left.degree[0], top_right.degree[0], num=self.grid_size[0]
@@ -177,4 +186,25 @@ class SynchrotonSignal(BaseSignal[Image2D]):
         target_freq: float,
         alpha: float,
     ) -> npt.NDArray[np.float_]:
+        """
+        Brightness Temperature Conversion.
+
+        https://science.nrao.edu/facilities/vla/proposing/TBconv
+
+        Parameters
+        ----------
+        freq : npt.NDArray[np.float_]
+            The brightness to be converted. The array may be in any shape.
+        source_freq : float
+            Source frequency of the brightness
+        target_freq : float
+            Target frequency.
+        alpha : float
+            Alpha
+
+        Returns
+        -------
+        npt.NDArray[np.float_]
+            Converted array in the same shape as the input array.
+        """
         return freq * (target_freq / source_freq) ** alpha
