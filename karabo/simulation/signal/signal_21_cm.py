@@ -55,7 +55,7 @@ class Signal21cm(BaseSignal[Image3D]):
         -------
         list[Image3D]
             A list of 3D image cubes, based on the `self.files` list of provided xfrac
-            and dens files.
+            and dens files. The pixel values are in Kelvin.
 
         Raises
         ------
@@ -90,7 +90,7 @@ class Signal21cm(BaseSignal[Image3D]):
             d_t_subtracted = t2c.subtract_mean_signal(d_t, 0)
             cubes.append(
                 Image3D(
-                    data=d_t_subtracted,
+                    data=d_t_subtracted / 1000,
                     x_label=x,
                     y_label=y,
                     z_label=z,
