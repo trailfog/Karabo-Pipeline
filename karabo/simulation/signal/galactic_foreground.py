@@ -150,6 +150,16 @@ class SignalGalacticForeground(BaseSignal[Image2D]):
         """
         Get a list from available redshift values (as float).
 
+        If the gleam catalogue is given, it will take precedents over the path. Else, if
+        no path is given, the default catalogue will bi used.
+
+        Parameters
+        ----------
+        gleam_file_path : Optional[Path], optional
+            Path to the gleam catalogue, by default None
+        gleam_catalogue : Optional[Table], optional
+            Gleam catalogue data, by default None
+
         Returns
         -------
         list[float]
