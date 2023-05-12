@@ -80,7 +80,7 @@ class SignalPlotting:
         colour_bar = ax.pcolormesh(x_label, y_label, image_data)
         ax.set_xlabel(r"$x$ [Mpc]")
         ax.set_ylabel(r"$y$ [Mpc]")
-        fig.colorbar(colour_bar, ax=ax, label="mK")
+        fig.colorbar(colour_bar, ax=ax, label="K")
 
         return fig
 
