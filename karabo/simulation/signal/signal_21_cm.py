@@ -1,9 +1,11 @@
 """21cm Signal simulation."""
 
+import re
 from pathlib import Path
 from typing import Callable, Final
 
 import numpy as np
+import requests
 import tools21cm as t2c
 
 from karabo.data.external_data import DownloadObject
@@ -19,13 +21,20 @@ class Signal21cm(BaseSignal[Image3D]):
     Examples
     --------
     >>> from karabo.simulation.signal.plotting import SignalPlotting
-    >>> z1 = Signal21cm.get_xfrac_dens_file(z=6.000, box_dims=244 / 0.7)
-    >>> z2 = Signal21cm.get_xfrac_dens_file(z=7.059, box_dims=244 / 0.7)
+    >>> redshifts = Signal21cm.available_redshifts()
+    >>> z1 = Signal21cm.get_xfrac_dens_file(z=redshifts[0], box_dims=244 / 0.7)
+    >>> z2 = Signal21cm.get_xfrac_dens_file(z=redshifts[1], box_dims=244 / 0.7)
     >>> sig = Signal21cm([z1, z2])
     >>> signal_images = sig.simulate()
     >>> fig = SignalPlotting.brightness_temperature(signal_images[0])
     >>> fig.savefig("brightness_temperature.png")
     """
+
+    XFRAC_URL = "https://ttt.astro.su.se/~gmell/244Mpc/244Mpc_f2_0_250/{xfrac_name}"
+    DENS_URL = (
+        "https://ttt.astro.su.se/~gmell/244Mpc/densities/nc250/coarser_densities/"
+        + "{dens_name}"
+    )
 
     def __init__(self, files: list[XFracDensFilePair]) -> None:
         """
@@ -188,14 +197,61 @@ class Signal21cm(BaseSignal[Image3D]):
 
         xfrac_path = DownloadObject(
             xfrac_name,
-            f"https://ttt.astro.su.se/~gmell/244Mpc/244Mpc_f2_0_250/{xfrac_name}",
+            Signal21cm.XFRAC_URL.format(xfrac_name=xfrac_name),
         ).get()
         dens_path = DownloadObject(
             dens_name,
-            "https://ttt.astro.su.se/~gmell/244Mpc/densities/nc250/coarser_densities/"
-            + f"{dens_name}",
+            Signal21cm.DENS_URL.format(dens_name=dens_name),
         ).get()
 
         return XFracDensFilePair(
             xfrac_path=Path(xfrac_path), dens_path=Path(dens_path), box_dims=box_dims
         )
+
+    @classmethod
+    def available_redshifts_xfrac(cls) -> list[float]:
+        """
+        Get all available redshifts for xfrac files.
+
+        Returns
+        -------
+        list[float]
+            List of all available redshifts for xfrac files.
+        """
+        resp = requests.get(Signal21cm.XFRAC_URL.format(xfrac_name=""))
+        all_redshifts_xfrac = re.findall(
+            r'<a href="xfrac3d_([0-9]+\.[0-9]+)\.bin">', resp.text
+        )
+
+        return [float(x) for x in all_redshifts_xfrac]
+
+    @classmethod
+    def available_redshifts_dens(cls) -> list[float]:
+        """
+        Get all available redshifts for dens files.
+
+        Returns
+        -------
+        list[float]
+            List of all available redshifts for dens files.
+        """
+        resp = requests.get(Signal21cm.DENS_URL.format(dens_name=""))
+        all_redshifts_dens = re.findall(
+            r'<a href="([0-9]+\.[0-9]+)n_all.dat">', resp.text
+        )
+        return [float(x) for x in all_redshifts_dens]
+
+    @classmethod
+    def available_redshifts(cls) -> list[float]:
+        """Get all available redshifts.
+
+        Returns
+        -------
+        list[float]
+            List of all available redshifts.
+        """
+        all_redshifts = set(cls.available_redshifts_dens()).intersection(
+            set(cls.available_redshifts_xfrac())
+        )
+
+        return list(sorted(all_redshifts))
