@@ -1,9 +1,10 @@
 """Signal plotting helpers."""
-from typing import Union
+from typing import Any, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import tools21cm as t2c
+from matplotlib import colors
 from matplotlib.figure import Figure
 from sklearn.metrics import matthews_corrcoef
 
@@ -138,7 +139,7 @@ class SignalPlotting:
         x_label: str = "RA [°]",
         y_label: str = "DEC [°]",
         bar_label: str = "Temperature [K]",
-        log_img: bool = False,
+        log_bar: bool = False,
     ) -> Figure:
         """
         Plot a general image with a temperature.
@@ -157,9 +158,8 @@ class SignalPlotting:
             Label to be plotted along the Y-axis.
         bar_label: str
             Label for the colour bar.
-        log_img : bool, optional
-            If the image should undergo a log transformation before being plotted, by
-            default False
+        log_bar : bool, optional
+            If the colour bar should have a symmetric log norm applied.
 
         Returns
         -------
@@ -169,10 +169,13 @@ class SignalPlotting:
         fig, ax = plt.subplots(1, 1)
 
         data = img.data
-        if log_img:
-            data = np.log(data)
+        add_kwargs: dict[str, Any] = {}
+        if log_bar:
+            add_kwargs["norm"] = colors.SymLogNorm(
+                linthresh=0.01, linscale=0.03, vmin=data.min(), vmax=data.max()
+            )
 
-        im = ax.imshow(data, origin="lower")
+        im = ax.imshow(data, origin="lower", **add_kwargs)
         plt.colorbar(im, ax=ax, label=bar_label)
 
         x_pos = np.linspace(0, img.data.shape[0] - 1, tick_count)
