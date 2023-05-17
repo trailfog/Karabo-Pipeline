@@ -1,7 +1,5 @@
 """Segmentation with Superpixel."""
 
-# %%
-
 import tools21cm as t2c
 
 from karabo.simulation.signal.base_segmentation import BaseSegmentation

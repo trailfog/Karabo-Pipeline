@@ -213,12 +213,22 @@ class SegmentationPlotting:
         Parameters
         ----------
         segmented : SegmentationOutput
-            output of the segmentation
+            Output of the segmentation
+
+        Returns
+        -------
+        Figure
+            Plot of the SegU-Net segmentation
+
+        Raises
+        ------
+        KaraboError
+            If the input 'xhi_seg_err' is None
         """
-        # seg
         xhi_seg = segmented.image.data
         boxsize = segmented.image.box_dims
         mask_xhi = segmented.mask_xhi
+        redshift = segmented.image.redshift
         xhi_seg_err = segmented.xhi_seg_err
         if xhi_seg_err is None:
             raise KaraboError("xhi_seg_err should not be None.")
@@ -233,7 +243,7 @@ class SegmentationPlotting:
             ncols=3,
         )
 
-        fig.suptitle("SegU-Net segmentation")
+        fig.suptitle(f"SegU-Net segmentation with redshift {redshift}")
 
         ax1.set_title(rf"($r_{{\phi}}={phicoef_seg:.3f}$)")
         ax1.imshow(
@@ -290,9 +300,20 @@ class SegmentationPlotting:
             output of the segmentation
         signal_image : Image3D
             Image cube
+
+        Returns
+        -------
+        Figure
+            Plot of the Superpixel segmentation
+
+        Raises
+        ------
+        KaraboError
+            If the input 'xhii_stitch' is None
         """
         dt2 = signal_image.data
         box_dims = signal_image.box_dims
+        redshift = signal_image.redshift
         mask_xhi = segmented.mask_xhi
         xhii_stitch = segmented.xhii_stitch
         if xhii_stitch is None:
@@ -306,7 +327,7 @@ class SegmentationPlotting:
 
         fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(18, 5))
 
-        fig.suptitle("Superpixel segmentation")
+        fig.suptitle(f"Superpixel segmentation with redshift={redshift}")
         ax1.set_title("superpixel_map")
         ax1.pcolormesh(x, y, superpixel_map[0], cmap="jet")
         ax2.set_title("dt_smooth")

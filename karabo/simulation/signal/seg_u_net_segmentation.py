@@ -5,6 +5,7 @@
 
 import pkg_resources
 import tools21cm as t2c
+import numpy as np
 
 try:
     from tensorflow.keras.models import load_model
@@ -145,16 +146,28 @@ class SegUNetSegmentation(BaseSegmentation):
             nu_axis=2,
         )  # frequency axis
 
-        mask_xhi = (
-            t2c.smooth_coeval(
-                cube=dt2,
-                z=redshift,
-                box_size_mpc=boxsize,
-                max_baseline=self.max_baseline,
-                nu_axis=2,
-            )
-            < 0.5
+        # mask_xhi = (
+        #     t2c.smooth_coeval(
+        #         cube=dt2,
+        #         z=redshift,
+        #         box_size_mpc=boxsize,
+        #         max_baseline=self.max_baseline,
+        #         nu_axis=2,
+        #     )
+        #     < 0.5
+        # )
+        smooth_coeval = t2c.smooth_coeval(
+            cube=dt2,
+            z=redshift,
+            box_size_mpc=boxsize,
+            max_baseline=self.max_baseline,
+            nu_axis=2,
         )
+
+        # threshold = 0.5
+        threshold = np.average(smooth_coeval)
+
+        mask_xhi = smooth_coeval < threshold
 
         # seg = t2c.segmentation.segunet21cm(tta=self.tta, verbose=True)
         segment = FixedSegUNet(tta=self.tta, verbose=True)
@@ -193,8 +206,6 @@ if __name__ == "__main__":
     # seg.segment(superimpose_images[0])
 
     seg = SegUNetSegmentation(max_baseline=70.0, tta=1)
-    segmented = seg.segment(signal_images[1])
+    segmented = seg.segment(signal_images[0])
 
     SegmentationPlotting.seg_u_net_plotting(segmented=segmented)
-
-# %%
