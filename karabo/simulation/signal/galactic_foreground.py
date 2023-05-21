@@ -1,5 +1,4 @@
 """Galactic Foreground signal catalogue wrapper."""
-
 import re
 from pathlib import Path
 from typing import Annotated, Final, Literal, Optional
@@ -34,6 +33,20 @@ class SignalGalacticForeground(BaseSignal[Image2D]):
     ... )
     >>> imgs = gf.simulate()
     >>> SignalPlotting.general_img(imgs[0], "Galactic foreground")
+    >>> # Map plotting
+    >>> col = SignalGalacticForeground._flux_column(7.6)
+    >>> data = (
+    ...     gf.gleam_catalogue[gf.gleam_catalogue[col] >= 0]
+    ...         .to_pandas()
+    ...         .sort_values(SignalGalacticForeground.RA_COLUMN)
+    ... )
+    >>> SignalPlotting.general_polar_plot(
+    ...     data[SignalGalacticForeground.RA_COLUMN],
+    ...     data[SignalGalacticForeground.DEC_COLUMN],
+    ...     data[col],
+    ...     title="Galactic Foreground",
+    ...     log_bar=True,
+    ... )
     """
 
     RA_COLUMN: Final[str] = "RAJ2000"
@@ -138,7 +151,7 @@ class SignalGalacticForeground(BaseSignal[Image2D]):
                     x_label=x_label,
                     y_label=y_label,
                     redshift=redshift,
-                    box_dims=0,  # TODO
+                    box_dims=-1,
                 )
             )
 
