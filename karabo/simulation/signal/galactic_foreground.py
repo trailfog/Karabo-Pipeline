@@ -32,7 +32,7 @@ class SignalGalacticForeground(BaseSignal[Image2D]):
     ...    fov=Angle([20, 20], unit=units.degree),
     ... )
     >>> imgs = gf.simulate()
-    >>> SignalPlotting.general_img(imgs[0], "Galactic foreground")
+    >>> SignalPlotting.general_img(imgs[0], "Galactic foreground", log_bar=True)
     >>> # Map plotting
     >>> col = SignalGalacticForeground._flux_column(7.6)
     >>> data = (
