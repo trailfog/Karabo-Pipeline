@@ -3,8 +3,6 @@
 import tools21cm as t2c
 
 from karabo.simulation.signal.base_segmentation import BaseSegmentation
-from karabo.simulation.signal.plotting import SegmentationPlotting
-from karabo.simulation.signal.signal_21_cm import Signal21cm
 from karabo.simulation.signal.typing import Image3D, SegmentationOutput
 
 
@@ -15,11 +13,12 @@ class SuperpixelSegmentation(BaseSegmentation):
 
     Examples
     --------
+    >>> from karabo.simulation.signal.plotting import SegmentationPlotting
+    >>> from karabo.simulation.signal.signal_21_cm import Signal21cm
     >>> z1 = Signal21cm.get_xfrac_dens_file(z=7.059, box_dims=244 / 0.7)
     >>> sig = Signal21cm([z1])
     >>> signal_images = sig.simulate()
-    >>> seg = SuperpixelSegmentation(5000, 20)
-    >>> seg = SuperpixelSegmentation(500, 5)
+    >>> seg = SuperpixelSegmentation(max_baseline=70.0,  max_iter=5, n_segments=1000)
     >>> segmented = seg.segment(signal_images[0])
     >>> SegmentationPlotting.superpixel_plotting(segmented, signal_images[0])
     """
@@ -59,12 +58,15 @@ class SuperpixelSegmentation(BaseSegmentation):
         redshift = image.redshift
         box_dims = image.box_dims
 
+        # Image is in Kelvin, we need mK
+        dt2 *= 1000
+
         dt_smooth = t2c.smooth_coeval(
             cube=dt2,  # Data cube that is to be smoothed
             z=redshift,  # Redshift of the coeval cube
             box_size_mpc=box_dims,  # Box size in cMpc
             max_baseline=self.max_baseline,  # Maximum baseline of the telescope
-            ratio=1.0,  # Ratio of smoothing scale in frequency direction
+            ratio=1,  # Ratio of smoothing scale in frequency direction
             nu_axis=2,
         )  # frequency axis
 
@@ -100,6 +102,17 @@ class SuperpixelSegmentation(BaseSegmentation):
             < 0.5
         )
 
+        # smooth_coeval = t2c.smooth_coeval(
+        #     cube=dt2,
+        #     z=redshift,
+        #     box_size_mpc=box_dims,
+        #     max_baseline=self.max_baseline,
+        #     nu_axis=2,
+        # )
+
+        # threshold = np.average(smooth_coeval)
+        # mask_xhi = smooth_coeval < threshold
+
         image_out = Image3D(
             data=superpixel_map,
             x_label=image.x_label,
@@ -116,20 +129,3 @@ class SuperpixelSegmentation(BaseSegmentation):
             dt_smooth=dt_smooth,
             xhi_seg_err=None,
         )
-
-
-if __name__ == "__main__":
-    z1 = Signal21cm.get_xfrac_dens_file(z=6.000, box_dims=244 / 0.7)
-    z3 = Signal21cm.get_xfrac_dens_file(z=7.059, box_dims=244 / 0.7)
-    sig = Signal21cm([z1, z3])
-    signal_images = sig.simulate()
-    # signal_images2 = sig.simulate()
-
-    # superimpose_images = Superimpose.impose([signal_images, signal_images2])
-    # superimpose_images = Superimpose.combine([signal_images, signal_images2])
-    # seg.segment(superimpose_images[0])
-
-    seg = SuperpixelSegmentation(max_baseline=35.0, n_segments=2500, max_iter=10)
-    segmented = seg.segment(signal_images[1])
-
-    SegmentationPlotting.superpixel_plotting(segmented, signal_images[1])

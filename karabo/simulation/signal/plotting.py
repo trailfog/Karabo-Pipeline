@@ -206,6 +206,7 @@ class SegmentationPlotting:
     def seg_u_net_plotting(
         cls,
         segmented: SegmentationOutput,
+        bin_count: int = 20,
     ) -> Figure:
         """
         Plot the first slice of the segU-net cube.
@@ -214,6 +215,8 @@ class SegmentationPlotting:
         ----------
         segmented : SegmentationOutput
             Output of the segmentation
+        bin_count : int
+            The number output bins in the histogram plot
 
         Returns
         -------
@@ -274,7 +277,7 @@ class SegmentationPlotting:
         ax2.set_xlabel("x [Mpc]")
 
         ax3.set_title("Pixel-Error-Histogram")
-        ax3.hist(xhi_seg_err[0].flatten(), bins=50)
+        ax3.hist(xhi_seg_err[0].flatten(), bins=bin_count)
         ax3.set_ylabel("Count")
         ax3.set_yscale("log")
         ax3.set_xlabel(r"$\sigma_{std}$")
@@ -328,10 +331,10 @@ class SegmentationPlotting:
         fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(18, 5))
 
         fig.suptitle(f"Superpixel segmentation with redshift={redshift}")
-        ax1.set_title("superpixel_map")
-        ax1.pcolormesh(x, y, superpixel_map[0], cmap="jet")
-        ax2.set_title("dt_smooth")
-        ax2.pcolormesh(x, y, dt_smooth[0], cmap="jet")
+        ax1.set_title("dt_smooth")
+        ax1.pcolormesh(x, y, dt_smooth[0], cmap="jet")
+        ax2.set_title("superpixel_map")
+        ax2.pcolormesh(x, y, superpixel_map[0], cmap="jet")
 
         ax3.set_title(rf"$r_{{\phi}}={phicoef_sup:.3f}$")
         ax3.pcolormesh(x, y, 1 - xhii_stitch[0], cmap="jet")

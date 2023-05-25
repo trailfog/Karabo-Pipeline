@@ -1,11 +1,7 @@
 """Segmentation with SegU-net."""
 
-# %%
-
-
 import pkg_resources
 import tools21cm as t2c
-import numpy as np
 
 try:
     from tensorflow.keras.models import load_model
@@ -13,8 +9,6 @@ except ImportError:  # noqa: E722
     from tensorflow.python.keras.models import load_model
 
 from karabo.simulation.signal.base_segmentation import BaseSegmentation
-from karabo.simulation.signal.plotting import SegmentationPlotting
-from karabo.simulation.signal.signal_21_cm import Signal21cm
 from karabo.simulation.signal.typing import Image3D, SegmentationOutput
 
 
@@ -97,6 +91,8 @@ class SegUNetSegmentation(BaseSegmentation):
 
     Examples
     --------
+    >>> from karabo.simulation.signal.plotting import SegmentationPlotting
+    >>> from karabo.simulation.signal.signal_21_cm import Signal21cm
     >>> z = Signal21cm.get_xfrac_dens_file(z=7.059, box_dims=244 / 0.7)
     >>> sig = Signal21cm([z])
     >>> signal_images = sig.simulate()
@@ -137,6 +133,9 @@ class SegUNetSegmentation(BaseSegmentation):
         redshift = image.redshift
         boxsize = image.box_dims
 
+        # Image is in Kelvin, we need mK
+        dt2 *= 1000
+
         dt_smooth = t2c.smooth_coeval(
             cube=dt2,  # Data cube that is to be smoothed
             z=redshift,  # Redshift of the coeval cube
@@ -146,28 +145,28 @@ class SegUNetSegmentation(BaseSegmentation):
             nu_axis=2,
         )  # frequency axis
 
-        # mask_xhi = (
-        #     t2c.smooth_coeval(
-        #         cube=dt2,
-        #         z=redshift,
-        #         box_size_mpc=boxsize,
-        #         max_baseline=self.max_baseline,
-        #         nu_axis=2,
-        #     )
-        #     < 0.5
-        # )
-        smooth_coeval = t2c.smooth_coeval(
-            cube=dt2,
-            z=redshift,
-            box_size_mpc=boxsize,
-            max_baseline=self.max_baseline,
-            nu_axis=2,
+        mask_xhi = (
+            t2c.smooth_coeval(
+                cube=dt2,
+                z=redshift,
+                box_size_mpc=boxsize,
+                max_baseline=self.max_baseline,
+                nu_axis=2,
+            )
+            < 0.5
         )
+        # smooth_coeval = t2c.smooth_coeval(
+        #     cube=dt2,
+        #     z=redshift,
+        #     box_size_mpc=boxsize,
+        #     max_baseline=self.max_baseline,
+        #     nu_axis=2,
+        # )
 
-        # threshold = 0.5
-        threshold = np.average(smooth_coeval)
+        # # threshold = 0.5
+        # threshold = np.average(smooth_coeval)
 
-        mask_xhi = smooth_coeval < threshold
+        # mask_xhi = smooth_coeval < threshold
 
         # seg = t2c.segmentation.segunet21cm(tta=self.tta, verbose=True)
         segment = FixedSegUNet(tta=self.tta, verbose=True)
@@ -192,20 +191,3 @@ class SegUNetSegmentation(BaseSegmentation):
             dt_smooth=dt_smooth,
             xhi_seg_err=xhi_seg_err,
         )
-
-
-if __name__ == "__main__":
-    z1 = Signal21cm.get_xfrac_dens_file(z=6.000, box_dims=244 / 0.7)
-    z3 = Signal21cm.get_xfrac_dens_file(z=7.059, box_dims=244 / 0.7)
-    sig = Signal21cm([z1, z3])
-    signal_images = sig.simulate()
-    # signal_images2 = sig.simulate()
-
-    # superimpose_images = Superimpose.impose([signal_images, signal_images2])
-    # superimpose_images = Superimpose.combine([signal_images, signal_images2])
-    # seg.segment(superimpose_images[0])
-
-    seg = SegUNetSegmentation(max_baseline=70.0, tta=1)
-    segmented = seg.segment(signal_images[0])
-
-    SegmentationPlotting.seg_u_net_plotting(segmented=segmented)
