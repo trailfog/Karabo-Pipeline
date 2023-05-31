@@ -11,6 +11,7 @@ from sklearn.metrics import matthews_corrcoef
 
 from karabo.error import KaraboError
 from karabo.simulation.signal.typing import (
+    BaseImage,
     Image2D,
     Image3D,
     SegmentationOutput,
@@ -56,15 +57,13 @@ class SignalPlotting:
         return fig
 
     @classmethod
-    def brightness_temperature(
-        cls, data: Union[Image2D, Image3D], z_layer: int = 0
-    ) -> Figure:
+    def brightness_temperature(cls, data: BaseImage, z_layer: int = 0) -> Figure:
         """
         Plot the brightness temperature of a 2D image.
 
         Parameters
         ----------
-        data : Union[Image2D, Image3D]
+        data : BaseImage
             The image to be plotted.
 
         z_layer : int, optional
@@ -92,9 +91,11 @@ class SignalPlotting:
         return fig
 
     @classmethod
-    def power_spectrum(cls, data: XFracDensFilePair, kbins: int = 15) -> Figure:
+    def power_spectrum_xfrac_dens(
+        cls, data: XFracDensFilePair, kbins: int = 15
+    ) -> Figure:
         """
-        Plot the power spectrum the 21cm signal.
+        Plot the power spectrum the 21cm signal using xfrac and dens-files.
 
         Parameters
         ----------
@@ -116,6 +117,57 @@ class SignalPlotting:
             d_t_subtracted,
             kbins=kbins,
             box_dims=loaded.box_dims,
+        )
+
+        ps = ps_1d[0]
+        ks = ps_1d[1]
+        fig, ax = plt.subplots(figsize=(16, 6))
+        ax.set_title("Spherically averaged power spectrum.")
+        ax.loglog(ks, ps * ks**3 / 2 / np.pi**2)
+        ax.set_xlabel(r"k (Mpc$^{-1}$)")
+        ax.set_ylabel(r"P(k) k$^{3}$/$(2\pi^2)$")
+
+        return fig
+
+    @classmethod
+    def power_spectrum(
+        cls,
+        data: Union[BaseImage, SegmentationOutput],
+        kbins: int = 15,
+        z_layer: int = 0,
+    ) -> Figure:
+        """
+        Plot the power spectrum the 21cm signal.
+
+        Parameters
+        ----------
+        data : Union[BaseImage, SegmentationOutput]
+            Either a BaseImage or a SegmentationOutput
+        kbins : int, optional
+            Count of bins for the spectrum plot, by default 15
+        z_layer : int
+            If an Image3D is passed, then this layer will be used to plot the image. By
+            default 0
+
+        Returns
+        -------
+        Figure
+            The generated plot figure.
+        """
+        image: BaseImage
+        if isinstance(data, SegmentationOutput):
+            image = data.image
+        else:
+            image = data
+
+        d_t_subtracted: npt.NDArray[np.float_] = image.data
+        if isinstance(image, Image3D):
+            d_t_subtracted = d_t_subtracted[z_layer, :, :]
+
+        ps_1d = t2c.power_spectrum_1d(
+            d_t_subtracted,
+            kbins=kbins,
+            box_dims=image.box_dims,
         )
 
         ps = ps_1d[0]
