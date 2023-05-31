@@ -40,16 +40,16 @@ class SignalPlotting:
         x, y = loaded.xy_dims()
 
         fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(16, 6))
-        fig.suptitle(f"$z={loaded.z:.1f},~x_v=${loaded.x_frac.mean():.2f}", size=18)
+        fig.suptitle(f"$z={loaded.z},~x_v=${loaded.x_frac.mean():.2f}", size=18)
         axs[0].set_title("Density contrast slice")
         pcm_dens = axs[0].pcolormesh(x, y, loaded.dens[0] / loaded.dens.mean() - 1)
-        fig.colorbar(pcm_dens, ax=axs[0])
+        fig.colorbar(pcm_dens, ax=axs[0], label="[K]")
         axs[0].set_xlabel(r"$x$ [Mpc]")
         axs[0].set_ylabel(r"$y$ [Mpc]")
 
         axs[1].set_title("Ionisation fraction slice")
         pcm_ion = axs[1].pcolormesh(x, y, loaded.x_frac[0])
-        fig.colorbar(pcm_ion, ax=axs[1])
+        fig.colorbar(pcm_ion, ax=axs[1], label="[K]")
         axs[1].set_xlabel(r"$x$ [Mpc]")
         axs[1].set_ylabel(r"$y$ [Mpc]")
 
