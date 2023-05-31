@@ -7,6 +7,7 @@ import numpy.typing as npt
 import pandas as pd
 from astropy import units
 from astropy.coordinates import Angle, SkyCoord
+from scipy.ndimage import map_coordinates
 
 
 # pylint: disable=too-many-arguments
@@ -224,4 +225,51 @@ def map_radec_datapoints_to_grid(
             pixel_value = np.median(filt[filt > 0])
             grid[x, y] = pixel_value
 
+    grid = np.nan_to_num(grid)
     return grid
+
+
+SciPyInterpolationModes = Literal[
+    "reflect",
+    "grid-mirror",
+    "constant",
+    "grid-constant",
+    "nearest",
+    "mirror",
+    "grid-wrap",
+    "wrap",
+]
+
+
+def interpolate_image(
+    image: Annotated[npt.NDArray[np.float_], Literal["X", "Y"]],
+    new_size: tuple[int, int],
+    mode: SciPyInterpolationModes = "constant",
+) -> Annotated[npt.NDArray[np.float_], Literal["N", "M"]]:
+    """
+    Interpolate an image from it's original size to `new_size`.
+
+    Parameters
+    ----------
+    image : Annotated[npt.NDArray[np.float_], Literal["X", "Y"]]
+        The image that is to be interpolated.
+    new_size : tuple[int, int]
+        The desired output size of the image
+    mode : SciPyInterpolationModes, optional
+        The interpolation mode, by default "constant".
+
+    Returns
+    -------
+    Annotated[npt.NDArray[np.float_], Literal["N", "M"]]
+        The interpolated input image with it's new dimensions.
+    """
+    original_shape = image.shape
+
+    row_indices = np.linspace(0, original_shape[0] - 1, new_size[0])
+    column_indices = np.linspace(0, original_shape[1] - 1, new_size[1])
+
+    grid = np.meshgrid(row_indices, column_indices, indexing="ij")
+    coordinates = np.stack(grid, axis=-1)
+
+    interpolated_array = map_coordinates(image, coordinates.T, order=1, mode=mode)
+    return interpolated_array.reshape(new_size).T
