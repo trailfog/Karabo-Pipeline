@@ -1,10 +1,9 @@
 """Superimpose two or more signals."""
-from typing import Union
 
 import numpy as np
 
 from karabo.error import KaraboError
-from karabo.simulation.signal.typing import Image2D, Image3D
+from karabo.simulation.signal.typing import BaseImage, Image2D, Image3D
 
 
 # pylint: disable=too-few-public-methods
@@ -106,8 +105,8 @@ class Superimpose:
     @classmethod
     def combine(
         cls,
-        *signals: Union[list[Image2D], list[Image3D], list[Union[Image2D, Image3D]]],
-    ) -> Union[Image2D, Image3D]:
+        *signals: BaseImage,
+    ) -> BaseImage:
         """
         Superimpose two or more signals int a single signal.
 
@@ -118,12 +117,12 @@ class Superimpose:
 
         Parameters
         ----------
-        signals : Union[list[Image2D], list[Image3D], list[Union[Image2D, Image3D]]]
+        signals : BaseImage
             The signals that are to be combined.
 
         Returns
         -------
-        Union[Image2D, Image3D]
+        BaseImage
             If the input includes at least one Image3D, the returntype is a Image3D,
             else Image2D.
 

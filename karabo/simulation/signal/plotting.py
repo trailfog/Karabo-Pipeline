@@ -196,6 +196,7 @@ class SignalPlotting:
         ax.legend()
         return fig
 
+    # pylint: disable=too-many-locals
     @classmethod
     def power_spectrum_image_vs_xfrac_dens(
         cls,
@@ -205,8 +206,7 @@ class SignalPlotting:
         z_layer: int = 0,
     ) -> Figure:
         """
-        Plot the power spectrum the 21cm signal by using an image and the original
-        xfrac/dens file pair.
+        Plot the power spectrum by using an image and the original xfrac/dens file pair.
 
         Parameters
         ----------
@@ -392,6 +392,7 @@ class SignalPlotting:
 class SegmentationPlotting:
     """Plotting utilities for the segmentation."""
 
+    # pylint: disable=too-many-locals
     @classmethod
     def seg_u_net_plotting(
         cls,
