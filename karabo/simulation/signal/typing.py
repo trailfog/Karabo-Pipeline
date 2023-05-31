@@ -111,10 +111,10 @@ class BaseImage:
     """Y-labels."""
 
     redshift: float
-    """Redshift value."""
+    """Redshift value. Negative number if not provided."""
 
     box_dims: float
-    """Box dimensions used to create the image."""
+    """Box dimensions used to create the image. Negative number if not provided."""
 
 
 @dataclass(frozen=True)

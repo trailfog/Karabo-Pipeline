@@ -1,8 +1,9 @@
 """Signal plotting helpers."""
-from typing import Any, Union
+from typing import Annotated, Any, Literal, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 import tools21cm as t2c
 from matplotlib import colors
 from matplotlib.figure import Figure
@@ -80,11 +81,9 @@ class SignalPlotting:
 
         if isinstance(data, Image3D):
             image_data = image_data[z_layer, :, :]
-            x_label = x_label[z_layer, :, :]
-            y_label = y_label[z_layer, :, :]
 
         fig, ax = plt.subplots(1, 1, figsize=(6, 5))
-        ax.set_title("21 cm signal")
+        ax.set_title(f"21 cm signal, z={data.redshift}")
         colour_bar = ax.pcolormesh(x_label, y_label, image_data)
         ax.set_xlabel(r"$x$ [Mpc]")
         ax.set_ylabel(r"$y$ [Mpc]")
@@ -152,11 +151,11 @@ class SignalPlotting:
             Title to be shown in the figure.
         tick_count : int, optional
             The count of ticks to show anlong each axis, by default 5
-        x_label : str
+        x_label : str, optional
             Label to be plotted along the X-axis.
-        y_label : str
+        y_label : str, optional
             Label to be plotted along the Y-axis.
-        bar_label: str
+        bar_label: str, optional
             Label for the colour bar.
         log_bar : bool, optional
             If the colour bar should have a symmetric log norm applied.
@@ -171,9 +170,7 @@ class SignalPlotting:
         data = img.data
         add_kwargs: dict[str, Any] = {}
         if log_bar:
-            add_kwargs["norm"] = colors.SymLogNorm(
-                linthresh=0.01, linscale=0.03, vmin=data.min(), vmax=data.max()
-            )
+            add_kwargs["norm"] = colors.SymLogNorm(linthresh=0.01)
 
         im = ax.imshow(data, origin="lower", **add_kwargs)
         plt.colorbar(im, ax=ax, label=bar_label)
@@ -195,6 +192,57 @@ class SignalPlotting:
         ax.set_ylabel(y_label)
 
         fig.suptitle(title)
+
+        return fig
+
+    @classmethod
+    def general_polar_plot(
+        cls,
+        ra_series: Annotated[npt.NDArray[np.float_], Literal["N"]],
+        dec_series: Annotated[npt.NDArray[np.float_], Literal["N"]],
+        intensities_series: Annotated[npt.NDArray[np.float_], Literal["N"]],
+        title: str,
+        bar_label: str = "Temperature [K]",
+        log_bar: bool = False,
+    ) -> Figure:
+        """
+        Plot a RA/DEC data in a polar plot with the intensity representing the colour.
+
+        Parameters
+        ----------
+        ra_series : Annotated[npt.NDArray[np.float_], Literal["N"]]
+            RA coordinates in degrees.
+        dec_series : Annotated[npt.NDArray[np.float_], Literal["N"]]
+            DEC coordinates in degrees.
+        intensities_series : Annotated[npt.NDArray[np.float_], Literal["N"]]
+            Intensities in Kelvin.
+        title : str
+            Title to be shown in the figure.
+        bar_label: str, optional
+            Label for the colour bar.
+        log_bar : bool, optional
+            If the colour bar should have a symmetric log norm applied.
+
+        Returns
+        -------
+        Figure
+            The resulting plot figure.
+        """
+        add_kwargs: dict[str, Any] = {}
+        if log_bar:
+            add_kwargs["norm"] = colors.SymLogNorm(linthresh=0.01)
+
+        fig, ax = plt.subplots(subplot_kw={"projection": "polar"}, figsize=(10, 10))
+        sc = ax.scatter(
+            ra_series / 180 * np.pi,
+            dec_series,
+            c=intensities_series,
+            **add_kwargs,
+        )
+        plt.colorbar(sc, ax=ax, label=bar_label)
+        ax.grid(True)
+
+        ax.set_title(title, fontdict={"fontsize": 15})
 
         return fig
 

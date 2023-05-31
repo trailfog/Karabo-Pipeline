@@ -33,6 +33,14 @@ class SignalSynchroton(BaseSignal[Image2D]):
     ... )
     >>> imgs = sync_sig.simulate()
     >>> SignalPlotting.general_img(imgs[0], "Synchroton")
+    >>> # Map overview plot
+    >>> SignalPlotting.general_polar_plot(
+    ...     sync_sig.data["RA"],
+    ...     sync_sig.data["DEC"],
+    ...     sync_sig.data["intensity"],
+    ...     title="Synchroton map",
+    ...     log_bar=True,
+    ... )
     """
 
     DEFAULT_FITS = (
@@ -174,8 +182,8 @@ class SignalSynchroton(BaseSignal[Image2D]):
                 data=grid_intensity,
                 x_label=x_label,
                 y_label=y_label,
-                redshift=0,
-                box_dims=0,  # TODO
+                redshift=-1,
+                box_dims=-1,
             )
         ]
 

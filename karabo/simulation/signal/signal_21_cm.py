@@ -1,8 +1,7 @@
 """21cm Signal simulation."""
-
 import re
 from pathlib import Path
-from typing import Callable, Final
+from typing import Callable, Final, Optional
 
 import numpy as np
 import requests
@@ -28,6 +27,10 @@ class Signal21cm(BaseSignal[Image3D]):
     >>> signal_images = sig.simulate()
     >>> fig = SignalPlotting.brightness_temperature(signal_images[0])
     >>> fig.savefig("brightness_temperature.png")
+
+    >>> from karabo.simulation.signal.plotting import SignalPlotting
+    >>> z = Signal21cm.randomized_lightcones(200, 8)
+    >>> SignalPlotting.brightness_temperature(z, z_layer=100)
     """
 
     XFRAC_URL = "https://ttt.astro.su.se/~gmell/244Mpc/244Mpc_f2_0_250/{xfrac_name}"
@@ -80,22 +83,21 @@ class Signal21cm(BaseSignal[Image3D]):
                 loaded.box_dims / x_frac.shape[1],
                 loaded.box_dims / x_frac.shape[2],
             )
-            z, y, x = np.mgrid[
-                slice(dz / 2, loaded.box_dims, dz),
-                slice(dy / 2, loaded.box_dims, dy),
-                slice(dx / 2, loaded.box_dims, dx),
-            ]
+            z = np.arange(dz / 2, loaded.box_dims, dz)
+            y = np.arange(dy / 2, loaded.box_dims, dy)
+            x = np.arange(dx / 2, loaded.box_dims, dx)
 
+            # calc_dt returns mK, not Kelvin!
             d_t = t2c.calc_dt(x_frac, dens, redshift)
-            d_t_subtracted = t2c.subtract_mean_signal(d_t, 0)
+            d_t_subtracted = t2c.subtract_mean_signal(d_t, 0) / 1000
             cubes.append(
                 Image3D(
-                    data=d_t_subtracted / 1000,
+                    data=d_t_subtracted,
                     x_label=x,
                     y_label=y,
                     z_label=z,
                     redshift=redshift,
-                    box_dims=244 / 7,
+                    box_dims=loaded.box_dims,
                 )
             )
 
@@ -118,13 +120,13 @@ class Signal21cm(BaseSignal[Image3D]):
         """
         return 30 * np.exp(-(redshift - 7.0) / 3)
 
+    # pylint: disable=too-many-locals
     @classmethod
     def randomized_lightcones(
         cls,
         n_cells: int,
         z: float,
-        r_hii: Callable[[float], float] = default_r_hii,
-        bubble_count: int = 3,
+        r_hii: Optional[Callable[[float], float]] = None,
     ) -> Image3D:
         """
         Generate an image with randomized lightcones.
@@ -136,9 +138,13 @@ class Signal21cm(BaseSignal[Image3D]):
         z : float
             The redshift value for this image.
         r_hii : Callable[[float], float], optional
-            Radius function of the HII region.
-        bubble_count : int, optional
-            How many bubbles to produce, by default 3
+            Radius function of the HII region. By default None, resulting in the
+            execution of `Signal21cm.default_r_hii`
+
+        Notes
+        -----
+        Implementation according to
+        https://tools21cm.readthedocs.io/examples/lightcone.html
 
         Returns
         -------
@@ -149,6 +155,9 @@ class Signal21cm(BaseSignal[Image3D]):
         xx, yy, zz = np.meshgrid(
             np.arange(n_cells), np.arange(n_cells), np.arange(n_cells), sparse=True
         )
+
+        if r_hii is None:
+            r_hii = Signal21cm.default_r_hii
 
         r = r_hii(z)
         r2 = (xx - n_cells / 2) ** 2 + (yy - n_cells / 2) ** 2 + (zz - n_cells / 2) ** 2
@@ -161,10 +170,23 @@ class Signal21cm(BaseSignal[Image3D]):
             np.roll(np.roll(cube0, -xx_0, axis=0), -yy_0, axis=1), -zz_0, axis=2
         )
 
-        for _ in range(bubble_count):
-            cube = cube + np.roll(
-                np.roll(np.roll(cube0, xx_0, axis=0), yy_0, axis=1), zz_0, axis=2
-            )
+        # Bubble 1
+        xx1, yy1, zz1 = int(n_cells / 2), int(n_cells / 2), int(n_cells / 2)
+        cube = cube + np.roll(
+            np.roll(np.roll(cube0, xx1, axis=0), yy1, axis=1), zz1, axis=2
+        )
+
+        # Bubble 2
+        xx2, yy2, zz2 = int(n_cells / 2), int(n_cells / 4), int(n_cells / 16)
+        cube = cube + np.roll(
+            np.roll(np.roll(cube0, xx2, axis=0), yy2, axis=1), zz2, axis=2
+        )
+
+        # Bubble 3
+        xx3, yy3, zz3 = int(n_cells / 2 + 10), int(-n_cells / 4), int(-n_cells / 32)
+        cube = cube + np.roll(
+            np.roll(np.roll(cube0, xx3, axis=0), yy3, axis=1), zz3, axis=2
+        )
 
         return Image3D(
             data=cube,
@@ -172,7 +194,7 @@ class Signal21cm(BaseSignal[Image3D]):
             y_label=np.arange(0, n_cells, 1, dtype=float),
             z_label=np.arange(0, n_cells, 1, dtype=float),
             redshift=z,
-            box_dims=244 / 7,
+            box_dims=0,
         )
 
     @staticmethod
@@ -220,7 +242,7 @@ class Signal21cm(BaseSignal[Image3D]):
         list[float]
             List of all available redshifts for xfrac files.
         """
-        resp = requests.get(Signal21cm.XFRAC_URL.format(xfrac_name=""))
+        resp = requests.get(Signal21cm.XFRAC_URL.format(xfrac_name=""), timeout=30)
         all_redshifts_xfrac = re.findall(
             r'<a href="xfrac3d_([0-9]+\.[0-9]+)\.bin">', resp.text
         )
@@ -237,7 +259,7 @@ class Signal21cm(BaseSignal[Image3D]):
         list[float]
             List of all available redshifts for dens files.
         """
-        resp = requests.get(Signal21cm.DENS_URL.format(dens_name=""))
+        resp = requests.get(Signal21cm.DENS_URL.format(dens_name=""), timeout=30)
         all_redshifts_dens = re.findall(
             r'<a href="([0-9]+\.[0-9]+)n_all.dat">', resp.text
         )
