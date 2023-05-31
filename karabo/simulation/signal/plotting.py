@@ -11,6 +11,7 @@ from sklearn.metrics import matthews_corrcoef
 
 from karabo.error import KaraboError
 from karabo.simulation.signal.typing import (
+    BaseImage,
     Image2D,
     Image3D,
     SegmentationOutput,
@@ -56,15 +57,13 @@ class SignalPlotting:
         return fig
 
     @classmethod
-    def brightness_temperature(
-        cls, data: Union[Image2D, Image3D], z_layer: int = 0
-    ) -> Figure:
+    def brightness_temperature(cls, data: BaseImage, z_layer: int = 0) -> Figure:
         """
         Plot the brightness temperature of a 2D image.
 
         Parameters
         ----------
-        data : Union[Image2D, Image3D]
+        data : BaseImage
             The image to be plotted.
 
         z_layer : int, optional
@@ -92,14 +91,16 @@ class SignalPlotting:
         return fig
 
     @classmethod
-    def power_spectrum(cls, data: XFracDensFilePair, kbins: int = 15) -> Figure:
+    def power_spectrum_xfrac_dens(
+        cls, data: Union[XFracDensFilePair, list[XFracDensFilePair]], kbins: int = 15
+    ) -> Figure:
         """
-        Plot the power spectrum the 21cm signal.
+        Plot the power spectrum the 21cm signal using xfrac and dens-files.
 
         Parameters
         ----------
-        data : XFracDensFilePair
-            The xfrac and dens file pair.
+        data : Union[XFracDensFilePair, list[XFracDensFilePair]]
+            The xfrac and dens file pair or a list thereof.
         kbins : int, optional
             Count of bins for the spectrum plot, by default 15
 
@@ -108,24 +109,165 @@ class SignalPlotting:
         Figure
             The generated plot figure.
         """
-        loaded = data.load()
+        if not isinstance(data, list):
+            data = [data]
 
-        d_t = t2c.calc_dt(loaded.x_frac, loaded.dens, loaded.z)
-        d_t_subtracted = t2c.subtract_mean_signal(d_t, 0)
+        fig, ax = plt.subplots(figsize=(16, 6))
+        ax.set_title("Spherically averaged power spectrum.")
+        ax.set_xlabel(r"k (Mpc$^{-1}$)")
+        ax.set_ylabel(r"P(k) k$^{3}$/$(2\pi^2)$")
+
+        for elem in data:
+            loaded = elem.load()
+
+            d_t = t2c.calc_dt(loaded.x_frac, loaded.dens, loaded.z)
+            d_t_subtracted = t2c.subtract_mean_signal(d_t, 0)
+            ps_1d = t2c.power_spectrum_1d(
+                d_t_subtracted,
+                kbins=kbins,
+                box_dims=loaded.box_dims,
+            )
+
+            ps = ps_1d[0]
+            ks = ps_1d[1]
+            ax.loglog(ks, ps * ks**3 / 2 / np.pi**2, label=loaded.z)
+
+        ax.grid()
+        ax.legend()
+        return fig
+
+    @classmethod
+    def power_spectrum(
+        cls,
+        data: Union[
+            BaseImage, SegmentationOutput, list[Union[BaseImage, SegmentationOutput]]
+        ],
+        kbins: int = 15,
+        z_layer: int = 0,
+    ) -> Figure:
+        """
+        Plot the power spectrum the 21cm signal.
+
+        Parameters
+        ----------
+        data : Union[BaseImage, SegmentationOutput]
+            Either a BaseImage or a SegmentationOutput
+        kbins : int, optional
+            Count of bins for the spectrum plot, by default 15
+        z_layer : int
+            If an Image3D is passed, then this layer will be used to plot the image. By
+            default 0
+
+        Returns
+        -------
+        Figure
+            The generated plot figure.
+        """
+        if not isinstance(data, list):
+            data = [data]
+
+        fig, ax = plt.subplots(figsize=(16, 6))
+        ax.set_xlabel(r"k (Mpc$^{-1}$)")
+        ax.set_ylabel(r"P(k) k$^{3}$/$(2\pi^2)$")
+        ax.set_title("Spherically averaged power spectrum.")
+
+        for elem in data:
+            image: BaseImage
+            if isinstance(elem, SegmentationOutput):
+                image = elem.image
+            else:
+                image = elem
+
+            d_t_subtracted: npt.NDArray[np.float_] = image.data
+            if isinstance(image, Image3D):
+                d_t_subtracted = d_t_subtracted[z_layer, :, :]
+
+            ps_1d = t2c.power_spectrum_1d(
+                d_t_subtracted,
+                kbins=kbins,
+                box_dims=image.box_dims,
+            )
+
+            ps = ps_1d[0]
+            ks = ps_1d[1]
+            ax.loglog(ks, ps * ks**3 / 2 / np.pi**2, label=image.redshift)
+
+        ax.grid()
+        ax.legend()
+        return fig
+
+    @classmethod
+    def power_spectrum_image_vs_xfrac_dens(
+        cls,
+        image: Union[BaseImage, SegmentationOutput],
+        xfrac_dens: XFracDensFilePair,
+        kbins: int = 15,
+        z_layer: int = 0,
+    ) -> Figure:
+        """
+        Plot the power spectrum the 21cm signal by using an image and the original
+        xfrac/dens file pair.
+
+        Parameters
+        ----------
+        image : Union[BaseImage, SegmentationOutput]
+            Either a BaseImage or a SegmentationOutput
+        xfrac_dens : XFracDensFilePair
+            The xfrac and dens file pair.
+        kbins : int, optional
+            Count of bins for the spectrum plot, by default 15
+        z_layer : int
+            If an Image3D is passed, then this layer will be used to plot the image. By
+            default 0
+
+        Returns
+        -------
+        Figure
+            The generated plot figure.
+        """
+        fig, ax = plt.subplots(figsize=(16, 6))
+        ax.set_xlabel(r"k (Mpc$^{-1}$)")
+        ax.set_ylabel(r"P(k) k$^{3}$/$(2\pi^2)$")
+        ax.set_title("Spherically averaged power spectrum.")
+
+        # Load the correct image
+        img: BaseImage
+        if isinstance(image, SegmentationOutput):
+            img = image.image
+        else:
+            img = image
+
+        d_t_subtracted: npt.NDArray[np.float_] = img.data
+        if isinstance(image, Image3D):
+            d_t_subtracted = d_t_subtracted[z_layer, :, :]
+
         ps_1d = t2c.power_spectrum_1d(
             d_t_subtracted,
             kbins=kbins,
-            box_dims=loaded.box_dims,
+            box_dims=img.box_dims,
         )
 
         ps = ps_1d[0]
         ks = ps_1d[1]
-        fig, ax = plt.subplots(figsize=(16, 6))
-        ax.set_title("Spherically averaged power spectrum.")
-        ax.loglog(ks, ps * ks**3 / 2 / np.pi**2)
-        ax.set_xlabel(r"k (Mpc$^{-1}$)")
-        ax.set_ylabel(r"P(k) k$^{3}$/$(2\pi^2)$")
+        ax.loglog(ks, ps * ks**3 / 2 / np.pi**2, label="Image")
 
+        # Load the xfrac/dens
+        loaded = xfrac_dens.load()
+
+        d_t_xd = t2c.calc_dt(loaded.x_frac, loaded.dens, loaded.z)
+        d_t_subtracted_xd = t2c.subtract_mean_signal(d_t_xd, 0)
+        ps_1d_xd = t2c.power_spectrum_1d(
+            d_t_subtracted_xd,
+            kbins=kbins,
+            box_dims=loaded.box_dims,
+        )
+
+        ps = ps_1d_xd[0]
+        ks = ps_1d_xd[1]
+        ax.loglog(ks, ps * ks**3 / 2 / np.pi**2, label="Xfrac/dens")
+
+        ax.grid()
+        ax.legend()
         return fig
 
     # pylint: disable=too-many-arguments,too-many-locals
@@ -297,7 +439,7 @@ class SegmentationPlotting:
         fig.suptitle(f"SegU-Net segmentation with redshift {redshift}")
 
         ax1.set_title(rf"($r_{{\phi}}={phicoef_seg:.3f}$)")
-        ax1.imshow(
+        im1 = ax1.imshow(
             xhi_seg[0],
             origin="lower",
             cmap="jet",
@@ -309,16 +451,17 @@ class SegmentationPlotting:
             extent=[0, boxsize, 0, boxsize],
         )
         ax1.set_xlabel("x [Mpc]")
+        fig.colorbar(im1, ax=ax1)
 
         ax2.set_title("Pixel-Error")
-        im = ax2.imshow(
+        im2 = ax2.imshow(
             xhi_seg_err[0],
             origin="lower",
             cmap="jet",
             extent=[0, boxsize, 0, boxsize],
         )
         fig.colorbar(
-            im,
+            im2,
             label=r"$\sigma_{std}$",
             ax=ax2,
         )
@@ -341,6 +484,7 @@ class SegmentationPlotting:
         cls,
         segmented: SegmentationOutput,
         signal_image: Image3D,
+        log_sky: bool = False,
     ) -> Figure:
         """
         Plot the first slice of the superpixel cube.
@@ -351,6 +495,8 @@ class SegmentationPlotting:
             output of the segmentation
         signal_image : Image3D
             Image cube
+        log_sky : bool, optional
+            If the colour bar of the sky plot should have a symmetric log norm applied.
 
         Returns
         -------
@@ -379,10 +525,18 @@ class SegmentationPlotting:
         fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(18, 5))
 
         fig.suptitle(f"Superpixel segmentation with redshift={redshift}")
+
+        kwargs = {}
+        if log_sky:
+            kwargs["norm"] = colors.SymLogNorm(linthresh=0.01)
+
         ax1.set_title("dt_smooth")
-        ax1.pcolormesh(x, y, dt_smooth[0], cmap="jet")
+        im1 = ax1.pcolormesh(x, y, dt_smooth[0], cmap="jet", **kwargs)
+        fig.colorbar(im1, ax=ax1)
+
         ax2.set_title("superpixel_map")
-        ax2.pcolormesh(x, y, superpixel_map[0], cmap="jet")
+        im2 = ax2.pcolormesh(x, y, superpixel_map[0], cmap="jet")
+        fig.colorbar(im2, ax=ax2)
 
         ax3.set_title(rf"$r_{{\phi}}={phicoef_sup:.3f}$")
         ax3.pcolormesh(x, y, 1 - xhii_stitch[0], cmap="jet")
