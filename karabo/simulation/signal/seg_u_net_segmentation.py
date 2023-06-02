@@ -155,24 +155,9 @@ class SegUNetSegmentation(BaseSegmentation):
             )
             < 0.5
         )
-        # smooth_coeval = t2c.smooth_coeval(
-        #     cube=dt2,
-        #     z=redshift,
-        #     box_size_mpc=boxsize,
-        #     max_baseline=self.max_baseline,
-        #     nu_axis=2,
-        # )
 
-        # # threshold = 0.5
-        # threshold = np.average(smooth_coeval)
-
-        # mask_xhi = smooth_coeval < threshold
-
-        # seg = t2c.segmentation.segunet21cm(tta=self.tta, verbose=True)
         segment = FixedSegUNet(tta=self.tta, verbose=True)
-
         cut = dt_smooth[:128, :128, :128]
-
         xhi_seg, xhi_seg_err = segment.prediction(x=cut)
 
         image_out = Image3D(

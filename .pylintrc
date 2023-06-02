@@ -9,3 +9,9 @@ max-line-length=150
 [BASIC]
 good-names=i,df,dx,dy,x,y,ax,z,dr
 variable-rgx=[a-z_][a-z0-9_]{0,30}$
+
+[SIMILARITIES]
+min-similarity-lines=7
+ignore-comments=yes
+ignore-docstrings=yes
+ignore-imports=yes

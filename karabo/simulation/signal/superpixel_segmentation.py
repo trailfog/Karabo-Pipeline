@@ -17,8 +17,8 @@ class SuperpixelSegmentation(BaseSegmentation):
     >>> from karabo.simulation.signal.signal_21_cm import Signal21cm
     >>> z1 = Signal21cm.get_xfrac_dens_file(z=7.059, box_dims=244 / 0.7)
     >>> sig = Signal21cm([z1])
-    >>> signal_images = sig.simulate()
     >>> seg = SuperpixelSegmentation(max_baseline=70.0,  max_iter=5, n_segments=1000)
+    >>> signal_images = sig.simulate()
     >>> segmented = seg.segment(signal_images[0])
     >>> SegmentationPlotting.superpixel_plotting(segmented, signal_images[0])
     """
@@ -101,17 +101,6 @@ class SuperpixelSegmentation(BaseSegmentation):
             )
             < 0.5
         )
-
-        # smooth_coeval = t2c.smooth_coeval(
-        #     cube=dt2,
-        #     z=redshift,
-        #     box_size_mpc=box_dims,
-        #     max_baseline=self.max_baseline,
-        #     nu_axis=2,
-        # )
-
-        # threshold = np.average(smooth_coeval)
-        # mask_xhi = smooth_coeval < threshold
 
         image_out = Image3D(
             data=superpixel_map,
