@@ -451,7 +451,6 @@ class SegmentationPlotting:
             extent=[0, boxsize, 0, boxsize],
         )
         ax1.set_xlabel("x [Mpc]")
-        fig.colorbar(im1, ax=ax1)
 
         ax2.set_title("Pixel-Error")
         im2 = ax2.imshow(
@@ -532,7 +531,7 @@ class SegmentationPlotting:
 
         ax1.set_title("dt_smooth")
         im1 = ax1.pcolormesh(x, y, dt_smooth[0], cmap="jet", **kwargs)
-        fig.colorbar(im1, ax=ax1)
+        fig.colorbar(im1, ax=ax1, label="[K]")
 
         ax2.set_title("superpixel_map")
         im2 = ax2.pcolormesh(x, y, superpixel_map[0], cmap="jet")
